@@ -74,7 +74,7 @@ sce <- runPCA(sce, exprs_values="logcounts", subset_row=hvgs, ncomponents=3)
 sce <- runUMAP(sce, dimred = 'PCA', external_neighbors=TRUE)
 
 # Clustering
-g <- buildSNNGraph(sce, use.dimred = 'UMAP', k=30)
+g <- buildSNNGraph(sce, use.dimred = 'UMAP', k=28)
 colLabels(sce) <- factor(igraph::cluster_louvain(g)$membership)
 
 
@@ -87,11 +87,29 @@ plotUMAP(sce, colour_by="cell_type")
 
 # visualizing important markers for clusters
 plotUMAP(sce, colour_by="label") # show clusters
+
+#find markers
 markers <- multiMarkerStats(
   t=findMarkers(sce, direction="up"),
   wilcox=findMarkers(sce, test="wilcox", direction="up"),
   binom=findMarkers(sce, test="binom", direction="up")
 )
+
 interesting <- markers[[3]] 
 interesting[1:10,1:9]
-plotUMAP(sce, colour_by="ODAM")
+plotUMAP(sce, colour_by="CNTFR")
+
+
+library(pathview)
+cellType <- "Epiblast"
+colour <- "deepskyblue"
+#cellType <- "Trophectoderm"
+#colour <- "green3"
+#cellType <- "Primitive endoderm"
+#colour <- "orange"
+cells <- assay(sce)[,!colData(sce)$cell_type!=cellType]
+mean <- rowMeans(cells)
+pv.out <- pathview(gene.data = mean, pathway.id = "04630", gene.idtype = "symbol", limit=ceiling(max(mean)), both.dirs = F, high = colour,
+                   out.suffix = cellType, node.sum = "max")
+pv.out$plot.data.gene
+
