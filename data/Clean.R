@@ -103,15 +103,30 @@ plotUMAP(sce, colour_by="CNTFR")
 # Expression pathways
 library(pathview)
 
-paths<-function(cellType,colour)
+paths<-function(cellType,colour,pathway)
 {
   cells <- assay(sce)[,!colData(sce)$cell_type!=cellType]
   gene.data <- rowMeans(cells)
-  pv.out <- pathview(gene.data = gene.data, pathway.id = "04630", gene.idtype = "symbol", limit=ceiling(max(gene.data)), both.dirs = F, high = colour,
+  pv.out <- pathview(gene.data = gene.data, pathway.id = pathway, gene.idtype = "symbol", limit=ceiling(max(gene.data)), both.dirs = F, high = colour,
                      out.suffix = cellType, node.sum = "max")
   #pv.out$plot.data.gene
 }
 
-paths("Epiblast", "deepskyblue")
-paths("Trophectoderm", "green3")
-paths("Primitive endoderm", "orange")
+pathways<-list("04010","04012","04014","04015","04020","04022","04024","04064"
+               ,"04066","04068","04071","04072","04150","04151","04152","04310"
+               ,"04330","04340","04350","04370","04371","04390","04630","04668")
+
+#single pathway
+p <- "04010"
+paths("Epiblast", "deepskyblue",p)
+paths("Trophectoderm", "green3",p)
+paths("Primitive endoderm", "orange",p)
+
+
+#all pathways
+for (p in pathways){
+  paths("Epiblast", "deepskyblue",p)
+  paths("Trophectoderm", "green3",p)
+  paths("Primitive endoderm", "orange",p)
+}
+
