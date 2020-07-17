@@ -103,12 +103,17 @@ plotUMAP(sce, colour_by="CNTFR")
 # Expression pathways
 library(pathview)
 
-paths<-function(cellType,colour,pathway)
+paths<-function(cellType,colour,pathway,avg)
 {
   cells <- assay(sce)[,!colData(sce)$cell_type!=cellType]
-  gene.data <- rowMeans(cells)
-  pv.out <- pathview(gene.data = gene.data, pathway.id = pathway, gene.idtype = "symbol", limit=ceiling(max(gene.data)), both.dirs = F, high = colour,
-                     out.suffix = cellType, node.sum = "max")
+  if (avg=="mean"){
+    gene.data <- rowMeans(cells)
+  } else {
+    gene.data <- rowMedians(cells)
+    names(gene.data) <- rownames(cells)
+  }
+  pv.out <- pathview(gene.data = gene.data, pathway.id = pathway, gene.idtype = "symbol", limit=ceiling(max(gene.data)), both.dirs = F, high = colour, mid = "white",
+                     out.suffix = paste(avg,".",cellType, sep=""), node.sum = "max")
   #pv.out$plot.data.gene
 }
 
@@ -118,15 +123,16 @@ pathways<-list("04010","04012","04014","04015","04020","04022","04024","04064"
 
 #single pathway
 p <- "04010"
-paths("Epiblast", "deepskyblue",p)
-paths("Trophectoderm", "green3",p)
-paths("Primitive endoderm", "orange",p)
+paths("Epiblast", "#255836", p, "mean")
+paths("Trophectoderm", "#1e4e78", p, "mean")
+paths("Primitive endoderm", "#a3202b", p, "mean")
 
 
 #all pathways
 for (p in pathways){
-  paths("Epiblast", "deepskyblue",p)
-  paths("Trophectoderm", "green3",p)
-  paths("Primitive endoderm", "orange",p)
+  paths("Epiblast", "#255836", p, "median")
+  paths("Trophectoderm", "#1e4e78", p, "median")
+  paths("Primitive endoderm", "#a3202b", p, "median")
 }
+
 
