@@ -66,11 +66,11 @@ assay(sce) <- NULL
 assay(sce) <- NULL
 assay(sce) <- NULL
 assay(sce) <- NULL
-assay(sce, "logcounts", withDimnames = FALSE) <- assay(corrected)
+assay(sce, "batch_corrected", withDimnames = FALSE) <- assay(corrected)
 
 # Dimensionality reduction
 set.seed(9999)
-sce <- runPCA(sce, exprs_values="logcounts", subset_row=hvgs, ncomponents=3)
+sce <- runPCA(sce, exprs_values="batch_corrected", subset_row=hvgs, ncomponents=3)
 sce <- runUMAP(sce, dimred = 'PCA', external_neighbors=TRUE)
 
 # Clustering
@@ -79,14 +79,14 @@ colLabels(sce) <- factor(igraph::cluster_louvain(g)$membership)
 
 
 # Visualization.
-plotUMAP(sce, colour_by="NANOG")
-plotUMAP(sce, colour_by="GATA3")
-plotUMAP(sce, colour_by="SOX17")
-plotUMAP(sce, colour_by="batch")
-plotUMAP(sce, colour_by="cell_type")
+plotUMAP(sce, colour_by="NANOG", by_exprs_values="batch_corrected")
+plotUMAP(sce, colour_by="GATA3", by_exprs_values="batch_corrected")
+plotUMAP(sce, colour_by="SOX17", by_exprs_values="batch_corrected")
+plotUMAP(sce, colour_by="batch", by_exprs_values="batch_corrected")
+plotUMAP(sce, colour_by="cell_type", by_exprs_values="batch_corrected")
 
 # visualizing important markers for clusters
-plotUMAP(sce, colour_by="label") # show clusters
+plotUMAP(sce, colour_by="label", by_exprs_values="batch_corrected") # show clusters
 
 #find markers
 markers <- multiMarkerStats(
@@ -97,8 +97,6 @@ markers <- multiMarkerStats(
 
 interesting <- markers[[3]] 
 interesting[1:10,1:9]
-plotUMAP(sce, colour_by="CNTFR")
-
 
 # Expression pathways
 library(pathview)
