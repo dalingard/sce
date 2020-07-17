@@ -100,16 +100,18 @@ interesting[1:10,1:9]
 plotUMAP(sce, colour_by="CNTFR")
 
 
+# Expression pathways
 library(pathview)
-cellType <- "Epiblast"
-colour <- "deepskyblue"
-#cellType <- "Trophectoderm"
-#colour <- "green3"
-#cellType <- "Primitive endoderm"
-#colour <- "orange"
-cells <- assay(sce)[,!colData(sce)$cell_type!=cellType]
-mean <- rowMeans(cells)
-pv.out <- pathview(gene.data = mean, pathway.id = "04630", gene.idtype = "symbol", limit=ceiling(max(mean)), both.dirs = F, high = colour,
-                   out.suffix = cellType, node.sum = "max")
-pv.out$plot.data.gene
 
+paths<-function(cellType,colour)
+{
+  cells <- assay(sce)[,!colData(sce)$cell_type!=cellType]
+  gene.data <- rowMeans(cells)
+  pv.out <- pathview(gene.data = gene.data, pathway.id = "04630", gene.idtype = "symbol", limit=ceiling(max(gene.data)), both.dirs = F, high = colour,
+                     out.suffix = cellType, node.sum = "max")
+  #pv.out$plot.data.gene
+}
+
+paths("Epiblast", "deepskyblue")
+paths("Trophectoderm", "green3")
+paths("Primitive endoderm", "orange")
