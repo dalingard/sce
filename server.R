@@ -11,10 +11,14 @@ library(shiny)
 library(dplyr)
 library(ggplot2)
 library(cowplot)
+library(scater)
+library(scran)
 
 pth_coords <- readRDS("www/data/pathway_gene_coords.rds")
 expr <- readRDS("www/data/blastocyst_flt_rpkm.rds")
 col_pal <- c("#4daf4a", "#e41a1c", "#377eb8")
+load("sce_batchCorrected.RData")
+source('plotDimRed.R')
 
 # Determines genes inside pathway category based on click coordinates
 get_genes <- function(pth, x, y){
@@ -31,8 +35,12 @@ get_genes <- function(pth, x, y){
 
 # Define server logic
 shinyServer(function(input, output) {
-  
+
   values <- reactiveValues(prows = 1)
+  
+  output$dimred <- renderPlot({
+    reduceDimentions(sce,hvgs,input$redTech,input$goi)
+  })
    
   # Show pre-rendered pathway diagrams
   output$pthwy_img <- renderImage({
