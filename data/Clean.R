@@ -34,27 +34,30 @@ filterGenes<-function(cells)
 {
   cells <- cells[rowSums(counts(cells)) != 0, ]
   # Only keep genes with avg. expression across cells > 0.04
-  cells <- cells[rowMeans(assay(cells)) > 0.04,]
+  cells <- cells[rowMeans(assay(cells)) >= 1,]
   return(cells)
 }
 
 # START
-
 load("data/sce_integrated_lateBlast.RData")
 
-# Quality control Genes
+# Quality control
 # Filter genes without NA chr
 sce <- sce[!is.na(rowData(sce)$chr),]
 
-# Batch correction and Normalisation
 Blk <- cellQC(sce[,colData(sce)$batch=="Blk"])
 Pet <- cellQC(sce[,colData(sce)$batch=="Pet"])
 Yan <- cellQC(sce[,colData(sce)$batch=="Yan"])
+
+hist(log10(assay(Blk)), breaks=100, main="", col="grey80",
+     xlab=expression(Log[10]~"average count"))
+abline(v=log10(1), col="blue", lwd=2, lty=2)
 
 Blk <- filterGenes(Blk)
 Pet <- filterGenes(Pet)
 Yan <- filterGenes(Yan)
 
+# Batch correction and Normalisation
 univ <- intersect(rownames(Blk), rownames(Pet))
 univ <- intersect(univ, rownames(Yan))
 
@@ -73,7 +76,7 @@ Blk.dec <- modelGeneVar(Blk)
 Pet.dec <- modelGeneVar(Pet)
 Yan.dec <- modelGeneVar(Yan)
 dec <- combineVar(Blk.dec, Pet.dec, Yan.dec)
-hvgs <- dec$bio > 0
+hvgs <- dec$bio > 0 #highly variable genes
 
 corrected <- rescaleBatches(Blk, Pet, Yan) #remove batch effect
 
@@ -84,7 +87,7 @@ sce <- sce[univ, cells]
 assay(sce, "batch_corrected") <- assays(corrected)$corrected
 
 # Dimensionality reduction
-set.seed(200)
+set.seed(100)
 sce <- runPCA(sce, exprs_values="batch_corrected", subset_row=hvgs, ncomponents=25)
 sce <- runUMAP(sce, dimred = 'PCA', external_neighbors=TRUE)
 
@@ -114,3 +117,4 @@ interesting <- markers[[2]]
 interesting[1:10,1:9]
 plotUMAP(sce, colour_by="USP18", by_exprs_values="batch_corrected")
 
+save(sce, hvgs, file = "sce_batchCorrected.RData")
