@@ -21,50 +21,61 @@ cell <- c("Epi", "PE", "TE")
 # Define UI for application that draws a histogram
 shinyUI(fluidPage(theme = "styles.css", title = "Embryo signalling",
   
-  # Application title
-  titlePanel("Signalling in the human early embryo"),
-  
-  # Application details
-  fluidRow(column(12, 
-                  p(span("This Shiny App colours genes on KEGG pathway "),
-                    span("diagrams according to their expression in the "),
-                    span("different cell types of the human blastocyst. "),
-                    span("Signal transduction pathways can be chosen from "),
-                    span("the dropdown menu on the left and blastocyst cell "),
-                    span("types from the one on the right. Epi corresponds "),
-                    span("to the epiblast, PE to the primitive endoderm "),
-                    span("and TE to the trophectoderm. Gene expression is "),
-                    HTML(paste0(span("shown as a colour range in log"), 
-                                span("2", style = "vertical-align: sub;font-size: smaller;"), 
-                                span("(RPKM +1) units "))),
-                    span("and corresponds to single-cell RNA-seq data from "),
-                    HTML(paste0(a(href = "https://www.nature.com/articles/nsmb.2660", "Yan et al."), " and ", 
-                                a(href = "https://dev.biologists.org/content/142/18/3151", "Blakeley et al. "))),
-                    span("As a result, rectangles on the KEGG diagram are "),
-                    span("coloured with the median expression of the gene "),
-                    span("across single cells of the same type. When rectangles "),
-                    span("represent more than one gene, the maximum median is "),
-                    span("represented. Clicking on a rectangle generates "),
-                    span("boxplots with the expression distribution of the gene "),
-                    span("or genes in the three blastocyst cell types.")
-                    ), 
-                  br())),
-  
-  fluidRow(
-    column(12, wellPanel(
-      fluidRow(
-        column(6, selectInput('spath', 'Signalling pathway:', pth)),
-        column(6, selectInput('ctype', 'Cell type:', cell))
-      )
-    ))
-  ),
-  fluidRow(
-    column(12, div(id = "pthwy", imageOutput("pthwy_img", click = clickOpts("image_click", clip = FALSE))))
-  ),
-  fluidRow(
-    column(12, br(), br())
-  ),
-  fluidRow(
-    column(12, div(id = "bplot", uiOutput("ui_plot")))
+  navbarPage(title = "Signalling in the human early embryo",
+    
+    tabPanel("Pathways", 
+             # Application details
+             fluidRow(column(12, 
+                             p(span("This Shiny App colours genes on KEGG pathway "),
+                               span("diagrams according to their expression in the "),
+                               span("different cell types of the human blastocyst. "),
+                               span("Signal transduction pathways can be chosen from "),
+                               span("the dropdown menu on the left and blastocyst cell "),
+                               span("types from the one on the right. Epi corresponds "),
+                               span("to the epiblast, PE to the primitive endoderm "),
+                               span("and TE to the trophectoderm. Gene expression is "),
+                               HTML(paste0(span("shown as a colour range in log"), 
+                                           span("2", style = "vertical-align: sub;font-size: smaller;"), 
+                                           span("(RPKM +1) units "))),
+                               span("and corresponds to single-cell RNA-seq data from "),
+                               HTML(paste0(a(href = "https://www.nature.com/articles/nsmb.2660", "Yan et al."), " and ", 
+                                           a(href = "https://dev.biologists.org/content/142/18/3151", "Blakeley et al. "))),
+                               span("As a result, rectangles on the KEGG diagram are "),
+                               span("coloured with the median expression of the gene "),
+                               span("across single cells of the same type. When rectangles "),
+                               span("represent more than one gene, the maximum median is "),
+                               span("represented. Clicking on a rectangle generates "),
+                               span("boxplots with the expression distribution of the gene "),
+                               span("or genes in the three blastocyst cell types.")
+                             ), 
+                             br())),
+             sidebarLayout(
+               sidebarPanel = sidebarPanel(
+                 selectInput('spath', 'Signalling pathway:', pth),
+                 selectInput('ctype', 'Cell type:', cell)
+                 ),
+               mainPanel = mainPanel(
+                 div(id = "pthwy", imageOutput("pthwy_img", click = clickOpts("image_click", clip = FALSE)))
+                 ),
+               position = "right"
+             ),
+             fluidRow(
+               column(12, div(id = "bplot", uiOutput("ui_plot")))
+             )),
+    tabPanel("Dimentionality Reduction", # Application details
+             fluidRow(p(span("Description")), 
+                             br()),
+             sidebarLayout(
+               sidebarPanel = sidebarPanel(
+                 selectInput('redTech', 'Reduction Technique:', c('UMAP', 'PCA')),
+                 selectInput('ntype', 'Normalization:', c('size-factor')),
+                 selectInput('goi', 'Gene of interest:', c("-",rownames(sce)))
+               ),
+               mainPanel = mainPanel(
+                 div(id = "dimredPlot", plotOutput(outputId = "dimred", height = "800"))
+               ),
+               position = "right"
+             )
+    ) 
   )
 ))
