@@ -117,4 +117,6 @@ interesting <- markers[[2]]
 interesting[1:10,1:9]
 plotUMAP(sce, colour_by="USP18", by_exprs_values="batch_corrected")
 
+sce <- logNormCounts(sce)
+
 save(sce, hvgs, file = "sce_batchCorrected.RData")
