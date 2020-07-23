@@ -8,6 +8,7 @@
 #
 
 library(shiny)
+library(shinyjs)
 
 pth <- c("hsa04010.MAPK", "hsa04012.ErbB", "hsa04014.Ras", "hsa04015.Rap1",
          "hsa04020.Calcium", "hsa04022.cGMP-PKG", "hsa04024.cAMP", "hsa04064.NFKB", 
@@ -16,60 +17,42 @@ pth <- c("hsa04010.MAPK", "hsa04012.ErbB", "hsa04014.Ras", "hsa04015.Rap1",
          "hsa04152.AMPK", "hsa04310.WNT", "hsa04330.Notch", "hsa04340.Hedgehog", 
          "hsa04350.TGF-beta", "hsa04370.VEGF", "hsa04371.Apelin", 
          "hsa04390.Hippo", "hsa04630.JAK-STAT", "hsa04668.TNF")
-cell <- c("Epi", "PE", "TE")
+
+cell <- c("Epiblast", "Primitive endoderm", "Trophectoderm")
+#genes <- rownames(sce)
 
 # Define UI for application that draws a histogram
-shinyUI(fluidPage(theme = "styles.css", title = "Embryo signalling",
-  
+shinyUI(fluidPage(theme = "styles.css", title = "Embryo signalling", useShinyjs(),
+                  
   navbarPage(title = "Signalling in the human early embryo",
     
     tabPanel("Pathways", 
              # Application details
              fluidRow(column(12, 
-                             p(span("This Shiny App colours genes on KEGG pathway "),
-                               span("diagrams according to their expression in the "),
-                               span("different cell types of the human blastocyst. "),
-                               span("Signal transduction pathways can be chosen from "),
-                               span("the dropdown menu on the left and blastocyst cell "),
-                               span("types from the one on the right. Epi corresponds "),
-                               span("to the epiblast, PE to the primitive endoderm "),
-                               span("and TE to the trophectoderm. Gene expression is "),
-                               HTML(paste0(span("shown as a colour range in log"), 
-                                           span("2", style = "vertical-align: sub;font-size: smaller;"), 
-                                           span("(RPKM +1) units "))),
-                               span("and corresponds to single-cell RNA-seq data from "),
-                               HTML(paste0(a(href = "https://www.nature.com/articles/nsmb.2660", "Yan et al."), " and ", 
-                                           a(href = "https://dev.biologists.org/content/142/18/3151", "Blakeley et al. "))),
-                               span("As a result, rectangles on the KEGG diagram are "),
-                               span("coloured with the median expression of the gene "),
-                               span("across single cells of the same type. When rectangles "),
-                               span("represent more than one gene, the maximum median is "),
-                               span("represented. Clicking on a rectangle generates "),
-                               span("boxplots with the expression distribution of the gene "),
-                               span("or genes in the three blastocyst cell types.")
+                             p(span("Description")
                              ), 
                              br())),
              sidebarLayout(
                sidebarPanel = sidebarPanel(
                  selectInput('spath', 'Signalling pathway:', pth),
-                 selectInput('ctype', 'Cell type:', cell)
-                 ),
-               mainPanel = mainPanel(
-                 div(id = "pthwy", imageOutput("pthwy_img", click = clickOpts("image_click", clip = FALSE)))
-                 ),
+                 selectInput('ctype', 'Cell type:', cell),
+                 selectInput('pathwayNtype', 'Normalization:', c('batch_corrected','fpkm','tpm','logcounts'))
+               ),
+               mainPanel = mainPanel(plotOutput("pathway", click = "pathway_click")),
                position = "right"
+             )
              ),
-             fluidRow(
-               column(12, div(id = "bplot", uiOutput("ui_plot")))
-             )),
     tabPanel("Dimentionality Reduction", # Application details
              fluidRow(p(span("Description")), 
                              br()),
              sidebarLayout(
                sidebarPanel = sidebarPanel(
-                 selectInput('redTech', 'Reduction Technique:', c('UMAP', 'PCA')),
-                 selectInput('ntype', 'Normalization:', c('size-factor')),
-                 selectInput('goi', 'Gene of interest:', c("-",rownames(sce)))
+                 selectInput('redTech', 'Dimensionality reduction method:', c('UMAP', 'PCA')),
+                 selectInput('colourby', 'Colour by:', c("Cell type", "Batch", "Gene expression")),
+                 disabled(selectInput('ntype', 'Normalization:', c('batch_corrected','fpkm','tpm','logcounts'))),
+                 disabled(
+                 selectInput('goi', 'Gene of interest:',"")
+                 )
                ),
                mainPanel = mainPanel(
                  div(id = "dimredPlot", plotOutput(outputId = "dimred", height = "800"))
