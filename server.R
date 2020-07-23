@@ -14,11 +14,9 @@ library(cowplot)
 library(scater)
 library(scran)
 
-pth_coords <- readRDS("www/data/pathway_gene_coords.rds")
-expr <- readRDS("www/data/blastocyst_flt_rpkm.rds")
-col_pal <- c("#4daf4a", "#e41a1c", "#377eb8")
 load("sce_batchCorrected.RData")
 source('plotDimRed.R')
+source('pathways.R')
 
 # Determines genes inside pathway category based on click coordinates
 get_genes <- function(pth, x, y){
@@ -34,31 +32,59 @@ get_genes <- function(pth, x, y){
 }
 
 # Define server logic
-shinyServer(function(input, output) {
-
-  values <- reactiveValues(prows = 1)
+shinyServer(function(input, output, session) {
   
-  output$dimred <- renderPlot({
-    reduceDimentions(sce,hvgs,input$redTech,input$goi)
+  updateSelectInput(session, "goi", choices = rownames(sce))
+  
+  pathData <- reactiveValues(
+    data = NULL
+  )
+  
+  observe({
+    if(is.null(input$pathway_click$x)) return(NULL)
+    click <- c(input$pathway_click$x, input$pathway_click$y)
+    print(click)
+    print(pathData$data)
+    #nearest_point <- which.min(apply(data[,1:2], 1, function(a) sum(((click-a)^2))))
+    #id <- data$values[nearest_point]
   })
-   
-  # Show pre-rendered pathway diagrams
-  output$pthwy_img <- renderImage({
-    if (is.null(input$spath))
-      return(NULL)
+  
+  output$pathway <- renderImage({
     
-    img_feats <- list(contentType = "image/png")
-    img_feats$src <- paste0("www/figs/", input$spath, "_", input$ctype, ".png")
-    img_feats$alt <- paste0(input$spath, " signalling")
+    width  <- (session$clientData$output_pathway_width*0.9)
+    height <- session$clientData$output_pathway_height
     
-    return(img_feats)
+    # For high-res displays, this will be greater than 1
+    pixelratio <- session$clientData$pixelratio
+    
+    data <- paths(input$ctype, input$spath, sce, normalistion = input$pathwayNtype)
+    pathData$data <- data
+    #pathData$plot.data.gene
+    
+    filename <- normalizePath(file.path('./', paste(substr(input$spath,1,8), '.median.', input$ctype, '.png', sep='')))
+    
+    # Return a list containing the filename and alt text
+    list(src = filename,
+         width = width,
+         alt = "Pathway")
     
   }, deleteFile = FALSE)
   
-  # Computes plot height based on number of rows
-  plotHeight <- function(){
-    return(values$prows * 200)
-  }
+  output$dimred <- renderPlot({
+    if (!(input$goi == '' && input$colourby == "Gene expression")){
+      reduceDimentions(sce,hvgs,input$goi,input$redTech,input$colourby,input$ntype)
+    }
+  })
+  
+  observeEvent(input$colourby, {
+    if (input$colourby == "Gene expression"){
+      enable("goi")
+      enable("ntype")
+    } else {
+      disable("goi")
+      disable("ntype")
+    }
+  })
   
   # Generate a boxplot based on double-clicked genes
   output$expr_boxplot <- renderPlot({
