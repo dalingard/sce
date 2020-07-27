@@ -19,7 +19,6 @@ pth <- c("hsa04010.MAPK", "hsa04012.ErbB", "hsa04014.Ras", "hsa04015.Rap1",
          "hsa04390.Hippo", "hsa04630.JAK-STAT", "hsa04668.TNF")
 
 cell <- c("Epiblast", "Primitive endoderm", "Trophectoderm")
-#genes <- rownames(sce)
 
 # Define UI for application that draws a histogram
 shinyUI(fluidPage(theme = "styles.css", title = "Embryo signalling", useShinyjs(),
@@ -36,11 +35,13 @@ shinyUI(fluidPage(theme = "styles.css", title = "Embryo signalling", useShinyjs(
                sidebarPanel = sidebarPanel(
                  selectInput('spath', 'Signalling pathway:', pth),
                  selectInput('ctype', 'Cell type:', cell),
-                 selectInput('pathwayNtype', 'Normalization:', c('batch_corrected','fpkm','tpm','logcounts'))
+                 selectInput('pathwayNtype', 'Normalization:', c('batch_corrected','fpkm','tpm','logcounts')),
+                 uiOutput("ui_plot")
                ),
-               mainPanel = mainPanel(plotOutput("pathway", click = "pathway_click")),
+               mainPanel = mainPanel(imageOutput("pathway", width = "100%", click = "pathway_click")),
                position = "right"
-             )
+             ),
+             fluidRow()
              ),
     tabPanel("Dimentionality Reduction", # Application details
              fluidRow(p(span("Description")), 
@@ -59,6 +60,21 @@ shinyUI(fluidPage(theme = "styles.css", title = "Embryo signalling", useShinyjs(
                ),
                position = "right"
              )
-    ) 
+    ),
+    tabPanel("Box Plots", 
+             # Application details
+             fluidRow(column(12, 
+                             p(span("Description")
+                             ), 
+                             br())),
+             sidebarLayout(
+               sidebarPanel = sidebarPanel(
+                 selectInput('bp_ntype', 'Normalization:', c('batch_corrected','fpkm','tpm','logcounts')),
+                 selectizeInput('bp_goi', 'Genes of interest:',"", multiple = TRUE, options = list(maxItems = 8))
+               ),
+               mainPanel = mainPanel(uiOutput("bp_ui_plot")),
+               position = "right"
+             )
+    )
   )
 ))
