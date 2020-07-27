@@ -13,69 +13,34 @@ library(ggplot2)
 library(cowplot)
 library(scater)
 library(scran)
+library(png)
 
 load("sce_batchCorrected.RData")
 source('plotDimRed.R')
 source('pathways.R')
+source('genBoxPlots.R')
 
-# Determines genes inside pathway category based on click coordinates
-get_genes <- function(pth, x, y){
-  pth_flt <- pth_coords %>% 
-    filter(pathway == pth) %>% 
-    filter((x0 <= x & y0 <= y) & (x1 >= x & y1 >= y))
-  
-  if(nrow(pth_flt) > 0){
-    return(pth_flt$genes)
-  }else{
-    return("")
-  }
+plotHeight <- function(numPlots){
+  prows <- ceiling(numPlots/2)
+  return(prows*250)
 }
 
 # Define server logic
 shinyServer(function(input, output, session) {
   
+  #provide options to selectize inputs
   updateSelectInput(session, "goi", choices = rownames(sce))
+  updateSelectInput(session, "bp_goi", choices = rownames(sce))
   
-  pathData <- reactiveValues(
-    data = NULL
+  values <- reactiveValues(
+    pathdata = NULL,
+    normalisation = NULL,
+    xsf = 1,
+    ysf = 1,
+    toPlot = NULL
   )
   
-  observe({
-    if(is.null(input$pathway_click$x)) return(NULL)
-    click <- c(input$pathway_click$x, input$pathway_click$y)
-    print(click)
-    print(pathData$data)
-    #nearest_point <- which.min(apply(data[,1:2], 1, function(a) sum(((click-a)^2))))
-    #id <- data$values[nearest_point]
-  })
-  
-  output$pathway <- renderImage({
-    
-    width  <- (session$clientData$output_pathway_width*0.9)
-    height <- session$clientData$output_pathway_height
-    
-    # For high-res displays, this will be greater than 1
-    pixelratio <- session$clientData$pixelratio
-    
-    data <- paths(input$ctype, input$spath, sce, normalistion = input$pathwayNtype)
-    pathData$data <- data
-    #pathData$plot.data.gene
-    
-    filename <- normalizePath(file.path('./', paste(substr(input$spath,1,8), '.median.', input$ctype, '.png', sep='')))
-    
-    # Return a list containing the filename and alt text
-    list(src = filename,
-         width = width,
-         alt = "Pathway")
-    
-  }, deleteFile = FALSE)
-  
-  output$dimred <- renderPlot({
-    if (!(input$goi == '' && input$colourby == "Gene expression")){
-      reduceDimentions(sce,hvgs,input$goi,input$redTech,input$colourby,input$ntype)
-    }
-  })
-  
+  #deactivate/activate inputs
   observeEvent(input$colourby, {
     if (input$colourby == "Gene expression"){
       enable("goi")
@@ -86,41 +51,73 @@ shinyServer(function(input, output, session) {
     }
   })
   
-  # Generate a boxplot based on double-clicked genes
-  output$expr_boxplot <- renderPlot({
-    if (is.null(input$image_click))
-      return(NULL)
-    genes <- get_genes(input$spath, input$image_click$x, input$image_click$y)
-    if(genes != ""){
-      withProgress({
-        genes <- strsplit(genes, ",")[[1]]
-        
-        values$prows <- ceiling(length(genes)/4)
-        
-        # Generate one boxplot per gene
-        p <- list()
-        for(i in seq_along(genes)){
-          p[[i]] <- expr %>%
-            filter(Gene == genes[i]) %>% 
-            ggplot(aes(cell_type, expression, fill = cell_type)) + 
-            geom_boxplot(outlier.colour = "red", outlier.shape = 8) +
-            scale_fill_manual(values = col_pal) +
-            labs(x = "", y = "RPKM", title = genes[i]) + theme_bw() +
-            theme(legend.position = "none")
-          incProgress()
-        }
-        plot_grid(plotlist = p, ncol = 4)
-      }, message = "Making boxplots...")
-      
-      
-    }else{
-      return(NULL)
+  #on click of pathway get gene data to plot
+  observeEvent(input$pathway_click,{
+    values$xsf <- 1
+    group <- filter(values$pathdata[[1]], input$pathway_click$x>=x*values$xsf-(0.5*width*values$xsf))
+    group <- filter(group, input$pathway_click$x<=(x*values$xsf)+(0.5*width*values$xsf))
+    group <- filter(group, input$pathway_click$y>=y*values$ysf-(0.5*height*values$ysf))
+    group <- filter(group, input$pathway_click$y<=(y*values$ysf)+(0.5*height*values$ysf))
+    entrezCells <- sce[!is.na(rowData(sce)$entrez), ]
+    group <- unlist(strsplit(group$all.mapped, ","))
+    group <- entrezCells[rowData(entrezCells)$entrez %in% group,]
+    values$toPlot <- group
+  })
+  
+  
+  #plot pathway
+  output$pathway <- renderImage({
+    
+    width  <- session$clientData$output_pathway_width*0.9
+    height <- session$clientData$output_pathway_height
+    pixelratio <- session$clientData$pixelratio
+    
+    data <- paths(input$ctype, input$spath, sce, normalistion = input$pathwayNtype)
+    values$pathdata <- data
+    
+    filename <- normalizePath(file.path('./', paste(substr(input$spath,1,8), '.median.', input$ctype, '.png', sep='')))
+    img <- readPNG(filename)
+    size <- dim(img)
+    values$xsf <- width/size[[1]]
+    # Return a list containing the filename and alt text
+    list(src = filename,
+         #width = width,
+         alt = "Pathway")
+  }, deleteFile = FALSE)
+  
+  
+  #plot PCA/UMAP
+  output$dimred <- renderPlot({
+    if (!(input$goi == '' && input$colourby == "Gene expression")){
+      reduceDimentions(sce,hvgs,input$goi,input$redTech,input$colourby,input$ntype)
     }
   })
   
-  # Wrap plotOutput in renderUI
+  #plot box plots on pathway tab
+  output$expr_boxplot <- renderPlot({
+    generateBoxPlots(values$toPlot, input$pathwayNtype)
+  })
+  
+  #ui wrapper for boxplots on pathway tab
   output$ui_plot <- renderUI({
-    plotOutput("expr_boxplot", height = plotHeight())
+    numPlots <- length(rownames(values$toPlot))
+    if (numPlots > 0){
+      plotOutput("expr_boxplot", height=plotHeight(numPlots))
+    }
+  })
+  
+  #plot box plots on boxplots tab
+  output$g_boxplot <- renderPlot({
+    generateBoxPlots(values$toPlot, input$bp_ntype)
+  })
+  
+  #ui wrapper for boxplots on boxplots tab
+  output$bp_ui_plot <- renderUI({
+    numPlots <- length(input$bp_goi)
+    if (numPlots > 0){
+      values$toPlot <- sce[rowData(sce)$symbol %in% input$bp_goi,]
+      plotOutput("g_boxplot", height=plotHeight(numPlots))
+    }
   })
   
 })
