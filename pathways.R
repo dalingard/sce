@@ -11,7 +11,17 @@ paths<-function(cellType, pathway, sce, normalistion = "batch_corrected", avg="m
   } else {
     colour <- "#a3202b"
   }
+  
+  if (normalistion=="fpkm" || normalistion=="tpm"){
+    counts <- assay(sce, normalistion)
+    libsizes <- colSums(counts)
+    size.factors <- libsizes/mean(libsizes)
+    assay(sce, "log2counts") <- log2(t(t(counts)/size.factors) + 1)
+    normalistion <- "log2counts"
+  }
+  
   cells <- assay(sce, normalistion)[,!colData(sce)$cell_type!=cellType]
+  
   if (avg=="mean"){
     gene.data <- rowMeans(cells)
   } else {
