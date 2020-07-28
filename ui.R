@@ -38,7 +38,7 @@ shinyUI(fluidPage(theme = "styles.css", title = "Embryo signalling", useShinyjs(
                  selectInput('pathwayNtype', 'Normalization:', c('batch_corrected','fpkm','tpm','logcounts')),
                  uiOutput("ui_plot")
                ),
-               mainPanel = mainPanel(imageOutput("pathway", width = "100%", click = "pathway_click")),
+               mainPanel = mainPanel(imageOutput("pathway", width = "100%", click = clickOpts("pathway_click",FALSE))),
                position = "right"
              ),
              fluidRow()
