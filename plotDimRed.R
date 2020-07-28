@@ -6,7 +6,15 @@ reduceDimentions<-function(cells, hvgs, geneOfInterest, type="UMAP", colourby="c
   } else if (colourby=="Batch") {
     colourby <- "batch"
   }
-  set.seed(100)
+  
+  if (norm_type=="fpkm" || norm_type=="tpm"){
+    counts <- assay(cells, norm_type)
+    libsizes <- colSums(counts)
+    size.factors <- libsizes/mean(libsizes)
+    assay(cells, "log2counts") <- log2(t(t(counts)/size.factors) + 1)
+    norm_type <- "log2counts"
+  }
+  set.seed(100) 
   cells <- runPCA(cells, exprs_values="batch_corrected", subset_row=hvgs, ncomponents=25)
   if (type=="UMAP"){
     cells <- runUMAP(cells, dimred = 'PCA', external_neighbors=TRUE)
