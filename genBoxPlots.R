@@ -4,6 +4,9 @@ generateBoxPlots <- function(toPlot, norm="batch_corrected", highlight=NULL){
     withProgress({
       p <- list()
       
+      maxVal <- max(assay(toPlot, norm))
+      minVal <- min(assay(toPlot, norm))
+      
       if (norm=="fpkm" || norm =="tpm"){
         trans <- "log2"
       } else {
@@ -30,7 +33,8 @@ generateBoxPlots <- function(toPlot, norm="batch_corrected", highlight=NULL){
           scale_fill_manual(values = col_pal) +
           labs(x = "", y = norm, title = rownames(toPlot)[[g]]) + theme_bw() +
           theme +
-          scale_y_continuous(breaks = scales::pretty_breaks(n = 10), trans = trans)
+          scale_y_continuous(breaks = scales::pretty_breaks(n = 10), trans = trans, limits = c(minVal, maxVal)) +
+          scale_x_discrete(labels=c("Epiblast" = "Epi", "Primitive endoderm" = "PE", "Trophectoderm" = "TE"))
         
         
         incProgress()
