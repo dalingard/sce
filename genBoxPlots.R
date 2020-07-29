@@ -9,8 +9,10 @@ generateBoxPlots <- function(toPlot, norm="batch_corrected", highlight=NULL){
       
       if (norm=="fpkm" || norm =="tpm"){
         trans <- "log2"
+        scale_y <- scale_y_continuous(breaks = scales::pretty_breaks(n = 10), trans = trans)
       } else {
         trans <- "identity"
+        scale_y <- scale_y_continuous(breaks = scales::pretty_breaks(n = 10), trans = trans, limits = c(minVal, maxVal))
       }
       
       for (g in seq_along(rownames(toPlot))){
@@ -33,7 +35,7 @@ generateBoxPlots <- function(toPlot, norm="batch_corrected", highlight=NULL){
           scale_fill_manual(values = col_pal) +
           labs(x = "", y = norm, title = rownames(toPlot)[[g]]) + theme_bw() +
           theme +
-          scale_y_continuous(breaks = scales::pretty_breaks(n = 10), trans = trans, limits = c(minVal, maxVal)) +
+          scale_y +
           scale_x_discrete(labels=c("Epiblast" = "Epi", "Primitive endoderm" = "PE", "Trophectoderm" = "TE"))
         
         
