@@ -56,7 +56,7 @@ shinyUI(fluidPage(theme = "styles.css", title = "Embryo signalling", useShinyjs(
                  )
                ),
                mainPanel = mainPanel(
-                 div(id = "dimredPlot", plotOutput(outputId = "dimred", height = "800"))
+                 div(id = "dimredPlot", plotOutput(outputId = "dimred", height = "500"))
                ),
                position = "right"
              )
@@ -75,6 +75,29 @@ shinyUI(fluidPage(theme = "styles.css", title = "Embryo signalling", useShinyjs(
                mainPanel = mainPanel(uiOutput("bp_ui_plot")),
                position = "right"
              )
-    )
+    ),
+    tabPanel("Gene Signatures"),
+    tabPanel("Differential Gene Expression",
+             fluidRow(p(span("Description")), 
+                      br()),
+             fluidRow(sidebarLayout(
+               sidebarPanel = sidebarPanel(
+                 radioButtons("compare_by", "Compare by:", 
+                                    choices = c("Cluster-based", "Cell-type based")),
+                 selectInput('compare_group1', 'Compare:', ""),
+                 selectInput('compare_group2', 'With:', "")
+               ),
+               mainPanel = mainPanel(
+                 plotOutput(outputId = "dge_Plot", height = "500")
+               ),
+               position = "right"
+             )),
+             hr(),
+             fluidRow(h1(textOutput("comparison_table_title"))),
+             fluidRow(dataTableOutput("comparison_table")),
+             hr(),
+             fluidRow(h1(textOutput("comparison_table_title2"))),
+             fluidRow(dataTableOutput("comparison_table2")))
+            
   )
 ))
