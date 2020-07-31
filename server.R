@@ -66,7 +66,8 @@ shinyServer(function(input, output, session) {
     selectedGroup = NULL,
     toPlot = NULL,
     genesToPlot = NULL,
-    toHighlight = NULL
+    toHighlight = NULL,
+    markers = NULL
   )
   
   #deactivate/activate inputs
@@ -78,6 +79,31 @@ shinyServer(function(input, output, session) {
       disable("goi")
       disable("ntype")
     }
+  })
+  
+  observeEvent({
+    input$compare_group1
+    input$compare_group2
+    }, {
+      if (input$compare_group1 != input$compare_group2){
+        if (input$compare_by=="Cluster-based"){
+          cells <- sce[,(colData(sce)$label == input$compare_group1 | colData(sce)$label == input$compare_group2)]
+          g <- factor(colData(cells)$label, levels=unique(colData(cells)$label))
+        } else {
+          cells <- sce[,(colData(sce)$cell_type == input$compare_group1 | colData(sce)$cell_type == input$compare_group2)]
+          g<- as.factor(colData(cells)$cell_type)
+        }
+        markers <- multiMarkerStats(
+          t=findMarkers(cells, groups=g, direction="up", assay.type="batch_corrected"),
+          wilcox=findMarkers(cells, groups=g, test="wilcox", direction="up", assay.type="batch_corrected"),
+          binom=findMarkers(cells, groups=g, test="binom", direction="up", assay.type="batch_corrected")
+        )
+        markers[[1]] <- cbind(names = rownames(markers[[1]]), markers[[1]])
+        markers[[2]] <- cbind(names = rownames(markers[[2]]), markers[[2]])
+        values$markers <- markers
+      } else {
+        values$markers <- NULL
+      }
   })
   
   
@@ -140,4 +166,40 @@ shinyServer(function(input, output, session) {
     }
   })
   
+  #diff gene expr umap plot
+  output$dge_Plot <- renderPlot({
+    if (input$compare_by=="Cluster-based"){
+      cs <- colData(sce)$label
+    } else {
+      cs <- colData(sce)$cell_type
+    }
+    cs <- sort(cs)
+    updateSelectInput(session, "compare_group1", choices = cs)
+    updateSelectInput(session, "compare_group2", choices = cs, selected = cs[[2]])
+    reduceDimentions(sce,hvgs,"","UMAP",input$compare_by)
+  })
+  
+  output$comparison_table_title <- renderText({ 
+    if (!is.null(values$markers)){
+      paste("Potential Markers for:", names(values$markers)[[1]])
+    }
+  })
+  
+  output$comparison_table_title2 <- renderText({ 
+    if (!is.null(values$markers)){
+      paste("Potential Markers for:",names(values$markers)[[2]])
+    }
+  })
+  
+  output$comparison_table <- renderDataTable({
+    if (!is.null(values$markers)){
+      values$markers[[1]]
+    }
+  }, options=list(pageLength=10))
+  
+  output$comparison_table2 <- renderDataTable({
+    if (!is.null(values$markers)){
+      values$markers[[2]]
+    }
+  }, options=list(pageLength=10))
 })
