@@ -13,6 +13,7 @@ library(ggplot2)
 library(cowplot)
 library(scater)
 library(scran)
+library(pathview)
 
 load("sce_batchCorrected.RData")
 source('plotDimRed.R')
@@ -25,7 +26,7 @@ plotHeight <- function(numPlots){
   return(prows*250)
 }
 
-#get genes from clicked group
+#get clicked group
 getGenes <- function(input, values){
   values$toHighlight <- NULL
   group <- filter(values$pathdata[[1]], input$pathway_click$coords_img$x>=x-(0.5*width)
@@ -36,8 +37,8 @@ getGenes <- function(input, values){
   return(values)
 }
 
-#get cells that have expressed genes in the clicked group
-getCellsToPlot <- function(input, values){
+#get genes from the clicked group
+getGenesToPlot <- function(values){
   entrezCells <- sce[!is.na(rowData(sce)$entrez), ]
   group <- unlist(strsplit(values$selectedGroup$all.mapped, ","))
   group <- entrezCells[rowData(entrezCells)$entrez %in% group,]
@@ -63,6 +64,7 @@ shinyServer(function(input, output, session) {
   #provide options to selectize inputs
   updateSelectInput(session, "goi", choices = rownames(sce))
   updateSelectInput(session, "bp_goi", choices = rownames(sce))
+  updateSelectInput(session, "gs_custom_signature", choices = rownames(sce))
   
   values <- reactiveValues(
     pathdata = NULL,
@@ -71,7 +73,8 @@ shinyServer(function(input, output, session) {
     toPlot = NULL,
     genesToPlot = NULL,
     toHighlight = NULL,
-    markers = NULL
+    markers = NULL,
+    gs_toPlot = NULL
   )
   
   #deactivate/activate inputs
@@ -150,7 +153,7 @@ shinyServer(function(input, output, session) {
     if (!is.null(values$selectedGroup)){
       numPlots <- length(unlist(strsplit(values$selectedGroup$all.mapped,",")))
       if (numPlots > 0){
-        values <- getCellsToPlot(input, values)
+        values <- getGenesToPlot(values)
         values <- getGeneToHighlight(input, values)
         plotOutput("expr_boxplot", height=plotHeight(numPlots))
       }
@@ -211,4 +214,52 @@ shinyServer(function(input, output, session) {
       values$markers[[2]]
     }
   }, options=list(pageLength=10))
+  
+  observeEvent(input$gs_vis, {
+    withProgress({
+    genes <- vector()
+    if (!is.null(input$gs_custom_signature)){
+      genes <- input$gs_custom_signature
+    } else {
+      cells <- assay(sce, input$gs_norm)
+      if (input$gs_based_on=="Mean"){
+        gene.data <- rowMeans(cells)
+      } else {
+        gene.data <- rowMedians(cells)
+        names(gene.data) <- rownames(cells)
+      }
+      pathway <- substr(input$gs_predefined_signatures, 4, 8)
+      pv.out <- pathview(gene.data = gene.data, pathway.id = pathway, gene.idtype = "symbol", limit=ceiling(max(gene.data)), both.dirs = F, high = "purple", mid = "white",
+                         out.suffix = paste(input$gs_based_on,".","all", sep=""), node.sum = "max")
+      
+      for (g in 1:length(pv.out$plot.data.gene$all.mapped)){
+        values$selectedGroup <- pv.out$plot.data.gene[g,]
+        values <- getGenesToPlot(values)
+        genes <- union(genes,rownames(values$toPlot))
+        incProgress()
+      }
+      
+    }
+    
+    cells <- sce[rowData(sce)$symbol %in% genes,]
+    cells <- assay(cells, input$gs_norm)
+    
+    if (input$gs_based_on=="Mean"){
+      average.gene.expression <- colMeans(cells)
+    } else {
+      average.gene.expression <- colMedians(cells)
+      names(average.gene.expression) <- colnames(cells)
+    }
+    cells <- sce
+    colData(cells) <- cbind(colData(cells), average.gene.expression)
+    values$gs_toPlot <- cells
+    }, message='Generating Plot')
+  })
+  
+  #plot PCA/UMAP on gene signature page
+  output$gs_plot <- renderPlot({
+    if (!is.null(values$gs_toPlot)){
+      reduceDimentions(values$gs_toPlot,hvgs,"",input$gs_dimred,"average.gene.expression",input$gs_norm)
+    }
+  })
 })
