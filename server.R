@@ -28,10 +28,10 @@ plotHeight <- function(numPlots){
 #get genes from clicked group
 getGenes <- function(input, values){
   values$toHighlight <- NULL
-  group <- filter(values$pathdata[[1]], input$pathway_click$coords_img$x>=x-(0.5*width))
-  group <- filter(group, input$pathway_click$coords_img$x<=(x)+(0.5*width))
-  group <- filter(group, input$pathway_click$coords_img$y>=y-(0.5*height))
-  group <- filter(group, input$pathway_click$coords_img$y<=(y)+(0.5*height))
+  group <- filter(values$pathdata[[1]], input$pathway_click$coords_img$x>=x-(0.5*width)
+                  & input$pathway_click$coords_img$x<=(x)+(0.5*width)
+                  & input$pathway_click$coords_img$y>=y-(0.5*height)
+                  & input$pathway_click$coords_img$y<=(y)+(0.5*height))
   values$selectedGroup <- group
   return(values)
 }
