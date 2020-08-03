@@ -19,11 +19,13 @@ source('plotDimRed.R')
 source('pathways.R')
 source('genBoxPlots.R')
 
+#box plot height
 plotHeight <- function(numPlots){
   prows <- ceiling(numPlots/2)
   return(prows*250)
 }
 
+#get genes from clicked group
 getGenes <- function(input, values){
   values$toHighlight <- NULL
   group <- filter(values$pathdata[[1]], input$pathway_click$coords_img$x>=x-(0.5*width))
@@ -34,6 +36,7 @@ getGenes <- function(input, values){
   return(values)
 }
 
+#get cells that have expressed genes in the clicked group
 getCellsToPlot <- function(input, values){
   entrezCells <- sce[!is.na(rowData(sce)$entrez), ]
   group <- unlist(strsplit(values$selectedGroup$all.mapped, ","))
@@ -41,7 +44,8 @@ getCellsToPlot <- function(input, values){
   values$toPlot <- group
   return(values)
 }
-  
+
+#gets the gene with the highest median expression in a particular cell type group
 getGeneToHighlight <- function(input, values){
   if (length(rownames(values$toPlot))>1){
     cells <- assay(values$toPlot, input$pathwayNtype)[,!colData(values$toPlot)$cell_type!=input$ctype]
@@ -81,29 +85,30 @@ shinyServer(function(input, output, session) {
     }
   })
   
+  #on a change to either of the "compare with" inputs on diff gene expr page, fetch both sets of markers
   observeEvent({
     input$compare_group1
     input$compare_group2
-    }, {
-      if (input$compare_group1 != input$compare_group2){
-        if (input$compare_by=="Cluster-based"){
-          cells <- sce[,(colData(sce)$label == input$compare_group1 | colData(sce)$label == input$compare_group2)]
-          g <- factor(colData(cells)$label, levels=unique(colData(cells)$label))
-        } else {
-          cells <- sce[,(colData(sce)$cell_type == input$compare_group1 | colData(sce)$cell_type == input$compare_group2)]
-          g<- as.factor(colData(cells)$cell_type)
-        }
-        markers <- multiMarkerStats(
-          t=findMarkers(cells, groups=g, direction="up", assay.type="batch_corrected"),
-          wilcox=findMarkers(cells, groups=g, test="wilcox", direction="up", assay.type="batch_corrected"),
-          binom=findMarkers(cells, groups=g, test="binom", direction="up", assay.type="batch_corrected")
-        )
-        markers[[1]] <- cbind(names = rownames(markers[[1]]), markers[[1]])
-        markers[[2]] <- cbind(names = rownames(markers[[2]]), markers[[2]])
-        values$markers <- markers
+  }, {
+    if (input$compare_group1 != input$compare_group2){
+      if (input$compare_by=="Cluster-based"){
+        cells <- sce[,(colData(sce)$label == input$compare_group1 | colData(sce)$label == input$compare_group2)]
+        g <- factor(colData(cells)$label, levels=unique(colData(cells)$label))
       } else {
-        values$markers <- NULL
+        cells <- sce[,(colData(sce)$cell_type == input$compare_group1 | colData(sce)$cell_type == input$compare_group2)]
+        g<- as.factor(colData(cells)$cell_type)
       }
+      markers <- multiMarkerStats(
+        t=findMarkers(cells, groups=g, direction="up", assay.type="batch_corrected"),
+        wilcox=findMarkers(cells, groups=g, test="wilcox", direction="up", assay.type="batch_corrected"),
+        binom=findMarkers(cells, groups=g, test="binom", direction="up", assay.type="batch_corrected")
+      )
+      markers[[1]] <- cbind(names = rownames(markers[[1]]), markers[[1]])
+      markers[[2]] <- cbind(names = rownames(markers[[2]]), markers[[2]])
+      values$markers <- markers
+    } else {
+      values$markers <- NULL
+    }
   })
   
   
@@ -179,24 +184,28 @@ shinyServer(function(input, output, session) {
     reduceDimentions(sce,hvgs,"","UMAP",input$compare_by)
   })
   
+  #diff gene expr gene table 1 title
   output$comparison_table_title <- renderText({ 
     if (!is.null(values$markers)){
       paste("Potential Markers for:", names(values$markers)[[1]])
     }
   })
   
-  output$comparison_table_title2 <- renderText({ 
-    if (!is.null(values$markers)){
-      paste("Potential Markers for:",names(values$markers)[[2]])
-    }
-  })
-  
+  #diff gene expr gene table 1
   output$comparison_table <- renderDataTable({
     if (!is.null(values$markers)){
       values$markers[[1]]
     }
   }, options=list(pageLength=10))
   
+  #diff gene expr gene table 2 title
+  output$comparison_table_title2 <- renderText({ 
+    if (!is.null(values$markers)){
+      paste("Potential Markers for:",names(values$markers)[[2]])
+    }
+  })
+  
+  #diff gene expr gene table 2
   output$comparison_table2 <- renderDataTable({
     if (!is.null(values$markers)){
       values$markers[[2]]
