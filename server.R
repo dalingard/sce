@@ -38,23 +38,22 @@ getGenes <- function(input, values){
 }
 
 #get genes from the clicked group
-getGenesToPlot <- function(values){
+getGenesToPlot <- function(all.mapped){
   entrezCells <- sce[!is.na(rowData(sce)$entrez), ]
-  group <- unlist(strsplit(values$selectedGroup$all.mapped, ","))
+  group <- unlist(strsplit(all.mapped, ","))
   group <- entrezCells[rowData(entrezCells)$entrez %in% group,]
-  values$toPlot <- group
-  return(values)
+  return(group)
 }
 
 #gets the gene with the highest median expression in a particular cell type group
-getGeneToHighlight <- function(input, values){
-  if (length(rownames(values$toPlot))>1){
-    cells <- assay(values$toPlot, input$pathwayNtype)[,!colData(values$toPlot)$cell_type!=input$ctype]
+getGeneToHighlight <- function(input, toPlot){
+  if (length(rownames(toPlot))>1){
+    cells <- assay(toPlot, input$pathwayNtype)[,!colData(toPlot)$cell_type!=input$ctype]
     gene.data <- rowMedians(cells)
     names(gene.data) <- rownames(cells)
     gene.data <- sort(gene.data, TRUE)
-    values$toHighlight <- names(gene.data)[[1]]
-    return(values)
+    toHighlight <- names(gene.data)[[1]]
+    return(toHighlight)
   }
 }
 
@@ -87,6 +86,11 @@ shinyServer(function(input, output, session) {
       disable("ntype")
     }
   })
+  
+  #On tab change
+  #observeEvent(input$navigation, {
+  #  
+  #})
   
   #on a change to either of the "compare with" inputs on diff gene expr page, fetch both sets of markers
   observeEvent({
@@ -153,8 +157,8 @@ shinyServer(function(input, output, session) {
     if (!is.null(values$selectedGroup)){
       numPlots <- length(unlist(strsplit(values$selectedGroup$all.mapped,",")))
       if (numPlots > 0){
-        values <- getGenesToPlot(values)
-        values <- getGeneToHighlight(input, values)
+        values$toPlot <- getGenesToPlot(values$selectedGroup$all.mapped)
+        values$toHighlight <- getGeneToHighlight(input, values$toPlot)
         plotOutput("expr_boxplot", height=plotHeight(numPlots))
       }
     }
@@ -233,9 +237,9 @@ shinyServer(function(input, output, session) {
                          out.suffix = paste(input$gs_based_on,".","all", sep=""), node.sum = "max")
       
       for (g in 1:length(pv.out$plot.data.gene$all.mapped)){
-        values$selectedGroup <- pv.out$plot.data.gene[g,]
-        values <- getGenesToPlot(values)
-        genes <- union(genes,rownames(values$toPlot))
+        group <- pv.out$plot.data.gene[g,]
+        newGenes <- getGenesToPlot(group$all.mapped)
+        genes <- union(genes,rownames(newGenes))
         incProgress()
       }
       
