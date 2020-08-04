@@ -16,6 +16,7 @@ library(scran)
 library(pathview)
 
 load('early_blastocyst.RData')
+load('early_blastocyst_morula.RData')
 source('plotDimRed.R')
 source('pathways.R')
 source('genBoxPlots.R')
@@ -100,23 +101,30 @@ shinyServer(function(input, output, session) {
   observeEvent(input$load_data, {
     withProgress({
     if (!is.null(input$dataset)){
-      if ("Early Blastocyst" %in% input$dataset){
+      if ("Early Blastocyst" %in% input$dataset & "Morula" %in% input$dataset){
+        values$dataset <- early_blastocyst_morula_sce
+        values$hvgs <- early_blastocyst_morula_hvgs
+        values$currently_loaded <- c("Early Blastocyst", "Morula")
+      } else if ("Early Blastocyst" %in% input$dataset){
         values$dataset <- early_blastocyst_sce
         values$hvgs <- early_blastocyst_hvgs
         values$currently_loaded <- c("Early Blastocyst")
       }
+      updateSelectInput(session, "ctype", choices = unique(values$dataset$cell_type))
       incProgress()
       updateSelectInput(session, "goi", choices = rownames(values$dataset))
       incProgress()
       updateSelectInput(session, "bp_goi", choices = rownames(values$dataset))
       incProgress()
       updateSelectInput(session, "gs_custom_signature", choices = rownames(values$dataset))
+      incProgress()
     }
     }, message = "Loading Data")
   })
   
   output$currently_loaded <- renderText({
-    paste("Currently Loaded: ",values$currently_loaded)
+    loaded <- paste(values$currently_loaded, collapse=', ' )
+    paste("Currently Loaded: ",loaded)
   })
   
   #deactivate/activate inputs
