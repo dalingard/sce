@@ -17,6 +17,8 @@ library(pathview)
 
 load('early_blastocyst.RData')
 load('early_blastocyst_morula.RData')
+load('morula.RData')
+
 source('plotDimRed.R')
 source('pathways.R')
 source('genBoxPlots.R')
@@ -109,6 +111,10 @@ shinyServer(function(input, output, session) {
         values$dataset <- early_blastocyst_sce
         values$hvgs <- early_blastocyst_hvgs
         values$currently_loaded <- c("Early Blastocyst")
+      } else if ("Morula" %in% input$dataset){
+        values$dataset <- morula_sce
+        values$hvgs <- morula_hvgs
+        values$currently_loaded <- c("Morula")
       }
       updateSelectInput(session, "ctype", choices = unique(values$dataset$cell_type))
       incProgress()
