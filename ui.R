@@ -38,6 +38,8 @@ pth <-
     "hsa04668.TNF"
   )
 
+normTypes <- c('Batch Corrected', 'FPKM', 'TPM', 'Log Norm Counts')
+
 cell <- c("Epiblast", "Primitive endoderm", "Trophectoderm")
 
 # Define UI for application that draws a histogram
@@ -47,6 +49,7 @@ shinyUI(fluidPage(
   useShinyjs(),
   
   navbarPage(
+    id="navigation",
     title = "Signalling in the human early embryo",
     
     tabPanel(
@@ -64,7 +67,7 @@ shinyUI(fluidPage(
           selectInput(
             'pathwayNtype',
             'Normalization:',
-            c('batch_corrected', 'fpkm', 'tpm', 'logcounts')
+            normTypes
           ),
           uiOutput("ui_plot")
         ),
@@ -93,7 +96,7 @@ shinyUI(fluidPage(
           disabled(selectInput(
             'ntype',
             'Normalization:',
-            c('batch_corrected', 'fpkm', 'tpm', 'logcounts')
+            normTypes
           )),
           disabled(selectInput('goi', 'Gene of interest:', ""))
         ),
@@ -116,7 +119,7 @@ shinyUI(fluidPage(
           selectInput(
             'bp_ntype',
             'Normalization:',
-            c('batch_corrected', 'fpkm', 'tpm', 'logcounts')
+            normTypes
           ),
           selectizeInput(
             'bp_goi',
@@ -137,7 +140,7 @@ shinyUI(fluidPage(
                sidebarLayout(
                  sidebarPanel = sidebarPanel(
                    selectInput('gs_dimred', 'Dimensionality reduction method:', c('UMAP', 'PCA')),
-                   selectInput('gs_norm','Normalization:',c('batch_corrected', 'fpkm', 'tpm', 'logcounts')),
+                   selectInput('gs_norm','Normalization:',normTypes),
                    selectInput('gs_based_on','Based On:',c('Mean', 'Median')),
                    selectInput('gs_predefined_signatures','Predefined Signatures:',pth),
                    selectizeInput('gs_custom_signature','Custom Signature:',"",multiple = TRUE),
