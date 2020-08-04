@@ -42,16 +42,34 @@ normTypes <- c('Batch Corrected', 'FPKM', 'TPM', 'Log Norm Counts')
 
 cell <- c("Epiblast", "Primitive endoderm", "Trophectoderm")
 
-# Define UI for application that draws a histogram
+dataSets <- c("Morula", "Early Blastocyst", "Gastrulation", "hESCs")
+
+
 shinyUI(fluidPage(
   theme = "styles.css",
   title = "Embryo signalling",
   useShinyjs(),
   
   navbarPage(
-    id="navigation",
-    title = "Signalling in the human early embryo",
-    
+    id = "navigation",
+    title = "Signalling in the Human Embryo",
+    tabPanel(
+      "Home",
+      fluidRow(p(span("Description"), align = "center"),
+               br()),
+      fluidRow(
+        checkboxGroupInput(
+          "dataset",
+          "Select dataset to analyse",
+          choices = dataSets,
+          selected = "Early Blastocyst",
+          inline = TRUE
+        ),
+        actionButton("load_data", "Load Data"),
+        align = "center"
+      ),
+      fluidRow(textOutput("currently_loaded"), align = "center")
+    ),
     tabPanel(
       "Pathways",
       # Application details
@@ -64,11 +82,9 @@ shinyUI(fluidPage(
         sidebarPanel = sidebarPanel(
           selectInput('spath', 'Signalling pathway:', pth),
           selectInput('ctype', 'Cell type:', cell),
-          selectInput(
-            'pathwayNtype',
-            'Normalization:',
-            normTypes
-          ),
+          selectInput('pathwayNtype',
+                      'Normalization:',
+                      normTypes),
           uiOutput("ui_plot")
         ),
         mainPanel = mainPanel(imageOutput(
@@ -93,11 +109,9 @@ shinyUI(fluidPage(
             'Colour by:',
             c("Cell type", "Batch", "Gene expression")
           ),
-          disabled(selectInput(
-            'ntype',
-            'Normalization:',
-            normTypes
-          )),
+          disabled(selectInput('ntype',
+                               'Normalization:',
+                               normTypes)),
           disabled(selectInput('goi', 'Gene of interest:', ""))
         ),
         mainPanel = mainPanel(div(
@@ -116,11 +130,9 @@ shinyUI(fluidPage(
                       br())),
       sidebarLayout(
         sidebarPanel = sidebarPanel(
-          selectInput(
-            'bp_ntype',
-            'Normalization:',
-            normTypes
-          ),
+          selectInput('bp_ntype',
+                      'Normalization:',
+                      normTypes),
           selectizeInput(
             'bp_goi',
             'Genes of interest:',
@@ -134,23 +146,28 @@ shinyUI(fluidPage(
       )
     ),
     tabPanel("Gene Signatures",
-             fluidRow(p(span("Description")),
-                      br()),
+             fluidRow(p(
+               span("Description")
+             ),
+             br()),
              fluidRow(
                sidebarLayout(
                  sidebarPanel = sidebarPanel(
-                   selectInput('gs_dimred', 'Dimensionality reduction method:', c('UMAP', 'PCA')),
-                   selectInput('gs_norm','Normalization:',normTypes),
-                   selectInput('gs_based_on','Based On:',c('Mean', 'Median')),
-                   selectInput('gs_predefined_signatures','Predefined Signatures:',pth),
-                   selectizeInput('gs_custom_signature','Custom Signature:',"",multiple = TRUE),
+                   selectInput(
+                     'gs_dimred',
+                     'Dimensionality reduction method:',
+                     c('UMAP', 'PCA')
+                   ),
+                   selectInput('gs_norm', 'Normalization:', normTypes),
+                   selectInput('gs_based_on', 'Based On:', c('Mean', 'Median')),
+                   selectInput('gs_predefined_signatures', 'Predefined Signatures:', pth),
+                   selectizeInput('gs_custom_signature', 'Custom Signature:', "", multiple = TRUE),
                    actionButton("gs_vis", "Visualize")
                  ),
                  mainPanel = mainPanel(plotOutput(outputId = "gs_plot", height = "500")),
                  position = "right"
                )
-             )
-    ),
+             )),
     tabPanel(
       "Differential Gene Expression",
       fluidRow(p(span("Description")),
