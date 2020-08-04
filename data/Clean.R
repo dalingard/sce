@@ -119,4 +119,7 @@ plotUMAP(sce, colour_by="USP18", by_exprs_values="batch_corrected")
 
 sce <- logNormCounts(sce)
 
-save(sce, hvgs, file = "sce_batchCorrected.RData")
+early_blastocyst_sce <- sce
+early_blastocyst_hvgs <- hvgs
+
+save(early_blastocyst_sce, early_blastocyst_hvgs, file = "early_blastocyst.RData")
