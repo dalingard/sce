@@ -42,7 +42,7 @@ normTypes <- c('Batch Corrected', 'FPKM', 'TPM', 'Log Norm Counts')
 
 cell <- c("Epiblast", "Primitive endoderm", "Trophectoderm")
 
-dataSets <- c("Morula", "Early Blastocyst", "Gastrulation", "hESCs")
+dataSets <- c("Morula", "Early Blastocyst", "hESCs")
 
 
 shinyUI(fluidPage(
