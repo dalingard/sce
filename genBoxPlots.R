@@ -9,10 +9,14 @@ generateBoxPlots <- function(toPlot, norm_type="batch_corrected", highlight=NULL
       
       if (norm_type=="fpkm" || norm_type =="tpm"){
         trans <- "log2"
-        scale_y <- scale_y_continuous(breaks = scales::pretty_breaks(n = 10), trans = trans)
+        scale_y <- list(scale_y_continuous(
+          breaks = scales::trans_breaks(trans, function(x) 2^x),
+          labels = scales::trans_format(trans, scales::math_format(2^.x)),
+          trans = trans
+        ), annotation_logticks(base = 2, sides = "l"))
       } else {
         trans <- "identity"
-        scale_y <- scale_y_continuous(breaks = scales::pretty_breaks(n = 10), trans = trans, limits = c(minVal, maxVal))
+        scale_y <- scale_y_continuous(breaks = scales::pretty_breaks(n = 10), limits = c(floor(minVal), ceiling(maxVal)))
       }
       
       for (g in seq_along(rownames(toPlot))){
