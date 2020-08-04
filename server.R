@@ -48,13 +48,25 @@ getGenesToPlot <- function(all.mapped){
 #gets the gene with the highest median expression in a particular cell type group
 getGeneToHighlight <- function(input, toPlot){
   if (length(rownames(toPlot))>1){
-    cells <- assay(toPlot, input$pathwayNtype)[,!colData(toPlot)$cell_type!=input$ctype]
+    cells <- assay(toPlot, convertNames(input$pathwayNtype))[,!colData(toPlot)$cell_type!=input$ctype]
     gene.data <- rowMedians(cells)
     names(gene.data) <- rownames(cells)
     gene.data <- sort(gene.data, TRUE)
     toHighlight <- names(gene.data)[[1]]
     return(toHighlight)
   }
+}
+
+#convert norm type labels to those used in sce
+convertNames <- function(norm_type){
+  if (norm_type == "Batch Corrected"){
+    norm_type <- "batch_corrected"
+  } else if (norm_type == "FPKM" | norm_type == "TPM"){
+    norm_type <- tolower(norm_type)
+  } else {
+    norm_type <- "logcounts"
+  }
+  return(norm_type)
 }
 
 # Define server logic
@@ -129,8 +141,8 @@ shinyServer(function(input, output, session) {
     width  <- session$clientData$output_pathway_width*0.9
     height <- session$clientData$output_pathway_height
     pixelratio <- session$clientData$pixelratio
-    
-    data <- paths(input$ctype, input$spath, sce, normalistion = input$pathwayNtype)
+
+    data <- paths(input$ctype, input$spath, sce, norm_type = convertNames(input$pathwayNtype))
     values$pathdata <- data
     
     filename <- normalizePath(file.path('./', paste(substr(input$spath,1,8), '.median.', input$ctype, '.png', sep='')))
@@ -143,13 +155,13 @@ shinyServer(function(input, output, session) {
   #plot PCA/UMAP
   output$dimred <- renderPlot({
     if (!(input$goi == '' && input$colourby == "Gene expression")){
-      reduceDimentions(sce,hvgs,input$goi,input$redTech,input$colourby,input$ntype)
+      reduceDimentions(sce,hvgs,input$goi,input$redTech,input$colourby,convertNames(input$ntype))
     }
   })
   
   #plot box plots on pathway tab
   output$expr_boxplot <- renderPlot({
-    generateBoxPlots(values$toPlot, input$pathwayNtype, values$toHighlight)
+    generateBoxPlots(values$toPlot, convertNames(input$pathwayNtype), values$toHighlight)
   })
   
   #ui wrapper for boxplots on pathway tab
@@ -166,7 +178,7 @@ shinyServer(function(input, output, session) {
   
   #plot box plots on boxplots tab
   output$g_boxplot <- renderPlot({
-    generateBoxPlots(values$genesToPlot, input$bp_ntype)
+    generateBoxPlots(values$genesToPlot, convertNames(input$bp_ntype))
   })
   
   #ui wrapper for boxplots on boxplots tab
@@ -219,13 +231,14 @@ shinyServer(function(input, output, session) {
     }
   }, options=list(pageLength=10))
   
+  #on clicking visualise get all genes in pathway or custom signature
   observeEvent(input$gs_vis, {
     withProgress({
     genes <- vector()
     if (!is.null(input$gs_custom_signature)){
       genes <- input$gs_custom_signature
     } else {
-      cells <- assay(sce, input$gs_norm)
+      cells <- assay(sce, convertNames(input$gs_norm))
       if (input$gs_based_on=="Mean"){
         gene.data <- rowMeans(cells)
       } else {
@@ -246,7 +259,7 @@ shinyServer(function(input, output, session) {
     }
     
     cells <- sce[rowData(sce)$symbol %in% genes,]
-    cells <- assay(cells, input$gs_norm)
+    cells <- assay(cells, convertNames(input$gs_norm))
     
     if (input$gs_based_on=="Mean"){
       average.gene.expression <- colMeans(cells)
@@ -263,7 +276,7 @@ shinyServer(function(input, output, session) {
   #plot PCA/UMAP on gene signature page
   output$gs_plot <- renderPlot({
     if (!is.null(values$gs_toPlot)){
-      reduceDimentions(values$gs_toPlot,hvgs,"",input$gs_dimred,"average.gene.expression",input$gs_norm)
+      reduceDimentions(values$gs_toPlot,hvgs,"",input$gs_dimred,"average.gene.expression",convertNames(input$gs_norm))
     }
   })
 })
