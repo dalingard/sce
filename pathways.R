@@ -1,26 +1,26 @@
 # Expression pathways
-library(pathview)
-
-paths<-function(cellType, pathway, sce, normalistion = "batch_corrected", avg="median")
+paths<-function(cellType, pathway, sce, norm_type = "batch_corrected", avg="median")
 {
   pathway <- substr(pathway, 4, 8)
   if (cellType=="Epiblast"){
     colour <- "#255836"
   } else if (cellType=="Trophectoderm"){
     colour <- "#1e4e78"
-  } else {
+  } else if (cellType=="Primitive endoderm") {
     colour <- "#a3202b"
+  } else {
+    colour <- "#108783"
   }
   
-  if (normalistion=="fpkm" || normalistion=="tpm"){
-    counts <- assay(sce, normalistion)
+  if (norm_type=="fpkm" || norm_type=="tpm"){
+    counts <- assay(sce, norm_type)
     libsizes <- colSums(counts)
     size.factors <- libsizes/mean(libsizes)
     assay(sce, "log2counts") <- log2(t(t(counts)/size.factors) + 1)
-    normalistion <- "log2counts"
+    norm_type <- "log2counts"
   }
   
-  cells <- assay(sce, normalistion)[,!colData(sce)$cell_type!=cellType]
+  cells <- assay(sce, norm_type)[,colData(sce)$cell_type==cellType]
   
   if (avg=="mean"){
     gene.data <- rowMeans(cells)
@@ -32,7 +32,3 @@ paths<-function(cellType, pathway, sce, normalistion = "batch_corrected", avg="m
                      out.suffix = paste(avg,".",cellType, sep=""), node.sum = "max")
   return(pv.out)
 }
-
-pathways<-list("04010","04012","04014","04015","04020","04022","04024","04064"
-               ,"04066","04068","04071","04072","04150","04151","04152","04310"
-               ,"04330","04340","04350","04370","04371","04390","04630","04668")
