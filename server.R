@@ -15,7 +15,7 @@ library(scater)
 library(scran)
 library(pathview)
 
-load("sce_batchCorrected.RData")
+load('early_blastocyst.RData')
 source('plotDimRed.R')
 source('pathways.R')
 source('genBoxPlots.R')
@@ -38,8 +38,8 @@ getGenes <- function(input, values){
 }
 
 #get genes from the clicked group
-getGenesToPlot <- function(all.mapped){
-  entrezCells <- sce[!is.na(rowData(sce)$entrez), ]
+getGenesToPlot <- function(all.mapped, values){
+  entrezCells <- values$dataset[!is.na(rowData(values$dataset)$entrez), ]
   group <- unlist(strsplit(all.mapped, ","))
   group <- entrezCells[rowData(entrezCells)$entrez %in% group,]
   return(group)
@@ -72,12 +72,20 @@ convertNames <- function(norm_type){
 # Define server logic
 shinyServer(function(input, output, session) {
   
-  #provide options to selectize inputs
-  updateSelectInput(session, "goi", choices = rownames(sce))
-  updateSelectInput(session, "bp_goi", choices = rownames(sce))
-  updateSelectInput(session, "gs_custom_signature", choices = rownames(sce))
+  #set default gene choices
+  withProgress({
+    incProgress()
+    updateSelectInput(session, "goi", choices = rownames(early_blastocyst_sce))
+    incProgress()
+    updateSelectInput(session, "bp_goi", choices = rownames(early_blastocyst_sce))
+    incProgress()
+    updateSelectInput(session, "gs_custom_signature", choices = rownames(early_blastocyst_sce))
+  }, message = "Loading Data")
   
   values <- reactiveValues(
+    dataset = early_blastocyst_sce,
+    hvgs = early_blastocyst_hvgs,
+    currently_loaded = c("Early Blastocyst"),
     pathdata = NULL,
     normalisation = NULL,
     selectedGroup = NULL,
@@ -87,6 +95,29 @@ shinyServer(function(input, output, session) {
     markers = NULL,
     gs_toPlot = NULL
   )
+  
+  
+  observeEvent(input$load_data, {
+    withProgress({
+    if (!is.null(input$dataset)){
+      if ("Early Blastocyst" %in% input$dataset){
+        values$dataset <- early_blastocyst_sce
+        values$hvgs <- early_blastocyst_hvgs
+        values$currently_loaded <- c("Early Blastocyst")
+      }
+      incProgress()
+      updateSelectInput(session, "goi", choices = rownames(values$dataset))
+      incProgress()
+      updateSelectInput(session, "bp_goi", choices = rownames(values$dataset))
+      incProgress()
+      updateSelectInput(session, "gs_custom_signature", choices = rownames(values$dataset))
+    }
+    }, message = "Loading Data")
+  })
+  
+  output$currently_loaded <- renderText({
+    paste("Currently Loaded: ",values$currently_loaded)
+  })
   
   #deactivate/activate inputs
   observeEvent(input$colourby, {
@@ -100,9 +131,9 @@ shinyServer(function(input, output, session) {
   })
   
   #On tab change
-  #observeEvent(input$navigation, {
-  #  
-  #})
+  # observeEvent(input$navigation, {
+  # 
+  # })
   
   #on a change to either of the "compare with" inputs on diff gene expr page, fetch both sets of markers
   observeEvent({
@@ -111,10 +142,10 @@ shinyServer(function(input, output, session) {
   }, {
     if (input$compare_group1 != input$compare_group2){
       if (input$compare_by=="Cluster-based"){
-        cells <- sce[,(colData(sce)$label == input$compare_group1 | colData(sce)$label == input$compare_group2)]
+        cells <- values$dataset[,(colData(values$dataset)$label == input$compare_group1 | colData(values$dataset)$label == input$compare_group2)]
         g <- factor(colData(cells)$label, levels=unique(colData(cells)$label))
       } else {
-        cells <- sce[,(colData(sce)$cell_type == input$compare_group1 | colData(sce)$cell_type == input$compare_group2)]
+        cells <- values$dataset[,(colData(values$dataset)$cell_type == input$compare_group1 | colData(values$dataset)$cell_type == input$compare_group2)]
         g<- as.factor(colData(cells)$cell_type)
       }
       markers <- multiMarkerStats(
@@ -142,7 +173,7 @@ shinyServer(function(input, output, session) {
     height <- session$clientData$output_pathway_height
     pixelratio <- session$clientData$pixelratio
 
-    data <- paths(input$ctype, input$spath, sce, norm_type = convertNames(input$pathwayNtype))
+    data <- paths(input$ctype, input$spath, values$dataset, norm_type = convertNames(input$pathwayNtype))
     values$pathdata <- data
     
     filename <- normalizePath(file.path('./', paste(substr(input$spath,1,8), '.median.', input$ctype, '.png', sep='')))
@@ -155,7 +186,7 @@ shinyServer(function(input, output, session) {
   #plot PCA/UMAP
   output$dimred <- renderPlot({
     if (!(input$goi == '' && input$colourby == "Gene expression")){
-      reduceDimentions(sce,hvgs,input$goi,input$redTech,input$colourby,convertNames(input$ntype))
+      reduceDimentions(values$dataset,values$hvgs,input$goi,input$redTech,input$colourby,convertNames(input$ntype))
     }
   })
   
@@ -169,7 +200,7 @@ shinyServer(function(input, output, session) {
     if (!is.null(values$selectedGroup)){
       numPlots <- length(unlist(strsplit(values$selectedGroup$all.mapped,",")))
       if (numPlots > 0){
-        values$toPlot <- getGenesToPlot(values$selectedGroup$all.mapped)
+        values$toPlot <- getGenesToPlot(values$selectedGroup$all.mapped, values)
         values$toHighlight <- getGeneToHighlight(input, values$toPlot)
         plotOutput("expr_boxplot", height=plotHeight(numPlots))
       }
@@ -185,7 +216,7 @@ shinyServer(function(input, output, session) {
   output$bp_ui_plot <- renderUI({
     numPlots <- length(input$bp_goi)
     if (numPlots > 0){
-      values$genesToPlot <- sce[rowData(sce)$symbol %in% input$bp_goi,]
+      values$genesToPlot <- values$dataset[rowData(values$dataset)$symbol %in% input$bp_goi,]
       plotOutput("g_boxplot", height=plotHeight(numPlots))
     }
   })
@@ -193,14 +224,14 @@ shinyServer(function(input, output, session) {
   #diff gene expr umap plot
   output$dge_Plot <- renderPlot({
     if (input$compare_by=="Cluster-based"){
-      cs <- colData(sce)$label
+      cs <- colData(values$dataset)$label
     } else {
-      cs <- colData(sce)$cell_type
+      cs <- colData(values$dataset)$cell_type
     }
     cs <- sort(cs)
     updateSelectInput(session, "compare_group1", choices = cs)
     updateSelectInput(session, "compare_group2", choices = cs, selected = cs[[2]])
-    reduceDimentions(sce,hvgs,"","UMAP",input$compare_by)
+    reduceDimentions(values$dataset,values$hvgs,"","UMAP",input$compare_by)
   })
   
   #diff gene expr gene table 1 title
@@ -238,7 +269,7 @@ shinyServer(function(input, output, session) {
     if (!is.null(input$gs_custom_signature)){
       genes <- input$gs_custom_signature
     } else {
-      cells <- assay(sce, convertNames(input$gs_norm))
+      cells <- assay(values$dataset, convertNames(input$gs_norm))
       if (input$gs_based_on=="Mean"){
         gene.data <- rowMeans(cells)
       } else {
@@ -251,14 +282,14 @@ shinyServer(function(input, output, session) {
       
       for (g in 1:length(pv.out$plot.data.gene$all.mapped)){
         group <- pv.out$plot.data.gene[g,]
-        newGenes <- getGenesToPlot(group$all.mapped)
+        newGenes <- getGenesToPlot(group$all.mapped, values)
         genes <- union(genes,rownames(newGenes))
         incProgress()
       }
       
     }
     
-    cells <- sce[rowData(sce)$symbol %in% genes,]
+    cells <- values$dataset[rowData(values$dataset)$symbol %in% genes,]
     cells <- assay(cells, convertNames(input$gs_norm))
     
     if (input$gs_based_on=="Mean"){
@@ -267,7 +298,7 @@ shinyServer(function(input, output, session) {
       average.gene.expression <- colMedians(cells)
       names(average.gene.expression) <- colnames(cells)
     }
-    cells <- sce
+    cells <- values$dataset
     colData(cells) <- cbind(colData(cells), average.gene.expression)
     values$gs_toPlot <- cells
     }, message='Generating Plot')
@@ -276,7 +307,7 @@ shinyServer(function(input, output, session) {
   #plot PCA/UMAP on gene signature page
   output$gs_plot <- renderPlot({
     if (!is.null(values$gs_toPlot)){
-      reduceDimentions(values$gs_toPlot,hvgs,"",input$gs_dimred,"average.gene.expression",convertNames(input$gs_norm))
+      reduceDimentions(values$gs_toPlot,values$hvgs,"",input$gs_dimred,"average.gene.expression",convertNames(input$gs_norm))
     }
   })
 })
