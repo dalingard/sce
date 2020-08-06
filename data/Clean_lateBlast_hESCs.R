@@ -32,9 +32,10 @@ cellQC<-function(cells)
 # Get rid of no-show and lowly expressed genes
 filterGenes<-function(cells)
 {
-  cells <- cells[rowSums(counts(cells)) != 0, ]
+  #cells <- cells[rowSums(counts(cells)) != 0, ]
   # Only keep genes with avg. expression across cells > 0.04
-  cells <- cells[rowMeans(assay(cells)) >= 1,]
+  #cells <- cells[rowMeans(assay(cells)) >= 1,]
+  cells <- cells[rowSums(counts(cells) == 0) <= 0.98*length(colnames(counts(cells))), ]
   return(cells)
 }
 
@@ -111,14 +112,14 @@ sce <- runPCA(sce, exprs_values="batch_corrected", subset_row=hvgs, ncomponents=
 sce <- runUMAP(sce, dimred = 'PCA', external_neighbors=TRUE)
 
 # Clustering
-g <- buildSNNGraph(sce, use.dimred = 'UMAP', k=27)
+g <- buildSNNGraph(sce, use.dimred = 'UMAP', k=22)
 colLabels(sce) <- factor(igraph::cluster_louvain(g)$membership)
 
 
 # Visualization.
 plotUMAP(sce, colour_by="NANOG", by_exprs_values="batch_corrected")
-plotUMAP(sce, colour_by="GATA3", by_exprs_values="batch_corrected")
-plotUMAP(sce, colour_by="SOX17", by_exprs_values="batch_corrected")
+#plotUMAP(sce, colour_by="GATA3", by_exprs_values="batch_corrected")
+#plotUMAP(sce, colour_by="SOX17", by_exprs_values="batch_corrected")
 plotUMAP(sce, colour_by="batch", by_exprs_values="batch_corrected")
 plotUMAP(sce, colour_by="cell_type", by_exprs_values="batch_corrected")
 
