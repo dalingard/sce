@@ -32,9 +32,10 @@ cellQC<-function(cells)
 # Get rid of no-show and lowly expressed genes
 filterGenes<-function(cells)
 {
-  cells <- cells[rowSums(counts(cells)) != 0, ]
+  #cells <- cells[rowSums(counts(cells)) != 0, ]
+  cells <- cells[rowSums(counts(cells) == 0) <= 0.98*length(colnames(counts(cells))), ]
   # Only keep genes with avg. expression across cells > 0.04
-  cells <- cells[rowMeans(assay(cells)) >= 1,]
+  #cells <- cells[rowMeans(assay(cells)) >= 1,]
   return(cells)
 }
 
@@ -51,7 +52,7 @@ mes3 <- cellQC(sce[,colData(sce)$batch=="Mes_3"])
 
 
 
-hist(log10(assay(Blk)), breaks=100, main="", col="grey80",
+hist(log10(assay(mes1)), breaks=100, main="", col="grey80",
      xlab=expression(Log[10]~"average count"))
 abline(v=log10(1), col="blue", lwd=2, lty=2)
 
