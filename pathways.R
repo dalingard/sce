@@ -8,15 +8,17 @@ paths<-function(cellType, pathway, sce, norm_type = "batch_corrected", avg="medi
     colour <- "#1e4e78"
   } else if (cellType=="Primitive endoderm") {
     colour <- "#a3202b"
-  } else {
+  } else if (cellType=="Morula"){
     colour <- "#108783"
+  } else if (cellType=="t2iL+Go H9"){
+    colour <- "#b8a904"
+  } else if (cellType=="E8 H9"){
+    colour <- "#b84304"
   }
   
   if (norm_type=="fpkm" || norm_type=="tpm"){
     counts <- assay(sce, norm_type)
-    libsizes <- colSums(counts)
-    size.factors <- libsizes/mean(libsizes)
-    assay(sce, "log2counts") <- log2(t(t(counts)/size.factors) + 1)
+    assay(sce, "log2counts") <- log2(assay(sce, norm_type) + 1)
     norm_type <- "log2counts"
   }
   
@@ -29,6 +31,6 @@ paths<-function(cellType, pathway, sce, norm_type = "batch_corrected", avg="medi
     names(gene.data) <- rownames(cells)
   }
   pv.out <- pathview(gene.data = gene.data, pathway.id = pathway, gene.idtype = "symbol", limit=ceiling(max(gene.data)), both.dirs = F, high = colour, mid = "white",
-                     out.suffix = paste(avg,".",cellType, sep=""), node.sum = "max")
+                     out.suffix = paste(avg,".",cellType, sep=""), node.sum = "max", kegg.dir = "./pathway_data")
   return(pv.out)
 }
