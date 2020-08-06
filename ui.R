@@ -62,12 +62,13 @@ shinyUI(fluidPage(
           "dataset",
           "Select dataset to analyse",
           choices = dataSets,
-          selected = "Early Blastocyst",
+          selected = NULL,
           inline = TRUE
         ),
         actionButton("load_data", "Load Data"),
         align = "center"
       ),
+      br(),
       fluidRow(textOutput("currently_loaded"), align = "center")
     ),
     tabPanel(
@@ -80,9 +81,9 @@ shinyUI(fluidPage(
                       br())),
       sidebarLayout(
         sidebarPanel = sidebarPanel(
-          selectInput('spath', 'Signalling pathway:', pth),
-          selectInput('ctype', 'Cell type:', cell),
-          selectInput('pathwayNtype',
+          selectizeInput('spath', 'Signalling pathway:', pth),
+          selectizeInput('ctype', 'Cell type:', cell),
+          selectizeInput('pathwayNtype',
                       'Normalization:',
                       normTypes),
           uiOutput("ui_plot")
@@ -97,22 +98,22 @@ shinyUI(fluidPage(
       fluidRow()
     ),
     tabPanel(
-      "Dimentionality Reduction",
+      "Dimensionality Reduction",
       # Application details
       fluidRow(p(span("Description")),
                br()),
       sidebarLayout(
         sidebarPanel = sidebarPanel(
-          selectInput('redTech', 'Dimensionality reduction method:', c('UMAP', 'PCA')),
-          selectInput(
+          selectizeInput('redTech', 'Dimensionality reduction method:', c('UMAP', 'PCA')),
+          selectizeInput(
             'colourby',
             'Colour by:',
             c("Cell type", "Batch", "Gene expression")
           ),
-          disabled(selectInput('ntype',
+          disabled(selectizeInput('ntype',
                                'Normalization:',
                                normTypes)),
-          disabled(selectInput('goi', 'Gene of interest:', ""))
+          disabled(selectizeInput('goi', 'Gene of interest:', NULL))
         ),
         mainPanel = mainPanel(div(
           id = "dimredPlot", plotOutput(outputId = "dimred", height = "500")
@@ -130,13 +131,13 @@ shinyUI(fluidPage(
                       br())),
       sidebarLayout(
         sidebarPanel = sidebarPanel(
-          selectInput('bp_ntype',
+          selectizeInput('bp_ntype',
                       'Normalization:',
                       normTypes),
           selectizeInput(
             'bp_goi',
             'Genes of interest:',
-            "",
+            NULL,
             multiple = TRUE,
             options = list(maxItems = 8)
           )
@@ -153,15 +154,15 @@ shinyUI(fluidPage(
              fluidRow(
                sidebarLayout(
                  sidebarPanel = sidebarPanel(
-                   selectInput(
+                   selectizeInput(
                      'gs_dimred',
                      'Dimensionality reduction method:',
                      c('UMAP', 'PCA')
                    ),
-                   selectInput('gs_norm', 'Normalization:', normTypes),
-                   selectInput('gs_based_on', 'Based On:', c('Mean', 'Median')),
-                   selectInput('gs_predefined_signatures', 'Predefined Signatures:', pth),
-                   selectizeInput('gs_custom_signature', 'Custom Signature:', "", multiple = TRUE),
+                   selectizeInput('gs_norm', 'Normalization:', normTypes),
+                   selectizeInput('gs_based_on', 'Based On:', c('Mean', 'Median')),
+                   selectizeInput('gs_predefined_signatures', 'Predefined Signatures:', pth),
+                   selectizeInput('gs_custom_signature', 'Custom Signature:', NULL, multiple = TRUE),
                    actionButton("gs_vis", "Visualize")
                  ),
                  mainPanel = mainPanel(plotOutput(outputId = "gs_plot", height = "500")),
@@ -180,8 +181,8 @@ shinyUI(fluidPage(
               "Compare by:",
               choices = c("Cluster-based", "Cell-type based")
             ),
-            selectInput('compare_group1', 'Compare:', ""),
-            selectInput('compare_group2', 'With:', "")
+            selectizeInput('compare_group1', 'Compare:', NULL),
+            selectizeInput('compare_group2', 'With:', NULL)
           ),
           mainPanel = mainPanel(plotOutput(outputId = "dge_Plot", height = "500")),
           position = "right"
@@ -191,12 +192,7 @@ shinyUI(fluidPage(
       fluidRow(h1(textOutput(
         "comparison_table_title"
       ))),
-      fluidRow(dataTableOutput("comparison_table")),
-      hr(),
-      fluidRow(h1(textOutput(
-        "comparison_table_title2"
-      ))),
-      fluidRow(dataTableOutput("comparison_table2"))
+      fluidRow(dataTableOutput("comparison_table"))
     )
     
   )
