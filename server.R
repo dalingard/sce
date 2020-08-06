@@ -15,10 +15,6 @@ library(scater)
 library(scran)
 library(pathview)
 
-load('early_blastocyst.RData')
-load('early_blastocyst_morula.RData')
-load('morula.RData')
-
 source('plotDimRed.R')
 source('pathways.R')
 source('genBoxPlots.R')
@@ -41,8 +37,7 @@ getGenes <- function(input, values){
 }
 
 #get genes from the clicked group
-getGenesToPlot <- function(all.mapped, values){
-  entrezCells <- values$dataset[!is.na(rowData(values$dataset)$entrez), ]
+getGenesToPlot <- function(all.mapped, entrezCells){
   group <- unlist(strsplit(all.mapped, ","))
   group <- entrezCells[rowData(entrezCells)$entrez %in% group,]
   return(group)
@@ -75,20 +70,9 @@ convertNames <- function(norm_type){
 # Define server logic
 shinyServer(function(input, output, session) {
   
-  #set default gene choices
-  withProgress({
-    incProgress()
-    updateSelectInput(session, "goi", choices = rownames(early_blastocyst_sce))
-    incProgress()
-    updateSelectInput(session, "bp_goi", choices = rownames(early_blastocyst_sce))
-    incProgress()
-    updateSelectInput(session, "gs_custom_signature", choices = rownames(early_blastocyst_sce))
-  }, message = "Loading Data")
-  
   values <- reactiveValues(
-    dataset = early_blastocyst_sce,
-    hvgs = early_blastocyst_hvgs,
-    currently_loaded = c("Early Blastocyst"),
+    dataset = NULL,
+    currently_loaded = c("None"),
     pathdata = NULL,
     normalisation = NULL,
     selectedGroup = NULL,
@@ -99,31 +83,50 @@ shinyServer(function(input, output, session) {
     gs_toPlot = NULL
   )
   
+  hideTab("navigation", "Pathways")
+  hideTab("navigation", "Dimensionality Reduction")
+  hideTab("navigation", "Box Plots")
+  hideTab("navigation", "Gene Signatures")
+  hideTab("navigation", "Differential Gene Expression")
   
   observeEvent(input$load_data, {
     withProgress({
     if (!is.null(input$dataset)){
-      if ("Early Blastocyst" %in% input$dataset & "Morula" %in% input$dataset){
-        values$dataset <- early_blastocyst_morula_sce
-        values$hvgs <- early_blastocyst_morula_hvgs
+      if ("Early Blastocyst" %in% input$dataset & "Morula" %in% input$dataset & "hESCs" %in% input$dataset){
+        values$dataset <- readRDS(file = "sce/early_blastocyst_morula_hesc_sce.rds")
+        values$currently_loaded <- c("Early Blastocyst", "Morula", "hESCs")
+      } else if ("Early Blastocyst" %in% input$dataset & "Morula" %in% input$dataset){
+        values$dataset <- readRDS(file = "sce/early_blastocyst_morula_sce.rds")
         values$currently_loaded <- c("Early Blastocyst", "Morula")
+      } else if ("Early Blastocyst" %in% input$dataset & "hESCs" %in% input$dataset){
+        values$dataset <- readRDS(file = "sce/early_blastocyst_hesc_sce.rds")
+        values$currently_loaded <- c("Early Blastocyst", "hESCs")
+      } else if ("Morula" %in% input$dataset & "hESCs" %in% input$dataset){
+        values$dataset <- readRDS(file = "sce/morula_hesc_sce.rds")
+        values$currently_loaded <- c("Morula", "hESCs")
       } else if ("Early Blastocyst" %in% input$dataset){
-        values$dataset <- early_blastocyst_sce
-        values$hvgs <- early_blastocyst_hvgs
+        values$dataset <- readRDS(file = "sce/early_blastocyst_sce.rds")
         values$currently_loaded <- c("Early Blastocyst")
       } else if ("Morula" %in% input$dataset){
-        values$dataset <- morula_sce
-        values$hvgs <- morula_hvgs
+        values$dataset <- readRDS(file = "sce/morula_sce.rds")
         values$currently_loaded <- c("Morula")
+      } else if ("hESCs" %in% input$dataset){
+        values$dataset <- readRDS(file = "sce/hesc_sce.rds")
+        values$currently_loaded <- c("hESCs")
       }
-      updateSelectInput(session, "ctype", choices = unique(values$dataset$cell_type))
+      updateSelectizeInput(session, "ctype", choices = unique(values$dataset$cell_type), server = TRUE)
       incProgress()
-      updateSelectInput(session, "goi", choices = rownames(values$dataset))
+      updateSelectizeInput(session, "goi", choices = rownames(values$dataset), server = TRUE)
       incProgress()
-      updateSelectInput(session, "bp_goi", choices = rownames(values$dataset))
+      updateSelectizeInput(session, "bp_goi", choices = rownames(values$dataset), server = TRUE)
       incProgress()
-      updateSelectInput(session, "gs_custom_signature", choices = rownames(values$dataset))
+      updateSelectizeInput(session, "gs_custom_signature", choices = rownames(values$dataset), server = TRUE)
       incProgress()
+      showTab("navigation", "Pathways")
+      showTab("navigation", "Dimensionality Reduction")
+      showTab("navigation", "Box Plots")
+      showTab("navigation", "Gene Signatures")
+      showTab("navigation", "Differential Gene Expression")
     }
     }, message = "Loading Data")
   })
@@ -162,11 +165,16 @@ shinyServer(function(input, output, session) {
         cells <- values$dataset[,(colData(values$dataset)$cell_type == input$compare_group1 | colData(values$dataset)$cell_type == input$compare_group2)]
         g<- as.factor(colData(cells)$cell_type)
       }
-      markers <- multiMarkerStats(
-        t=findMarkers(cells, groups=g, direction="up", assay.type="batch_corrected"),
-        wilcox=findMarkers(cells, groups=g, test="wilcox", direction="up", assay.type="batch_corrected"),
-        binom=findMarkers(cells, groups=g, test="binom", direction="up", assay.type="batch_corrected")
-      )
+      
+      # For multiple combined tests
+      # markers <- multiMarkerStats(
+      #   t=findMarkers(cells, groups=g, direction="up", assay.type="batch_corrected"),
+      #   wilcox=findMarkers(cells, groups=g, test="wilcox", direction="up", assay.type="batch_corrected"),
+      #   binom=findMarkers(cells, groups=g, test="binom", direction="up", assay.type="batch_corrected")
+      # )
+      
+      markers <- findMarkers(cells, groups = g, pval.type="any") 
+      
       markers[[1]] <- cbind(names = rownames(markers[[1]]), markers[[1]])
       markers[[2]] <- cbind(names = rownames(markers[[2]]), markers[[2]])
       values$markers <- markers
@@ -186,21 +194,21 @@ shinyServer(function(input, output, session) {
     width  <- session$clientData$output_pathway_width*0.9
     height <- session$clientData$output_pathway_height
     pixelratio <- session$clientData$pixelratio
-
+    
     data <- paths(input$ctype, input$spath, values$dataset, norm_type = convertNames(input$pathwayNtype))
     values$pathdata <- data
     
     filename <- normalizePath(file.path('./', paste(substr(input$spath,1,8), '.median.', input$ctype, '.png', sep='')))
     list(src = filename,
          width = width,
-         alt = "Pathway")
+         alt = "Pathway Unavailable")
   }, deleteFile = FALSE)
   
   
   #plot PCA/UMAP
   output$dimred <- renderPlot({
     if (!(input$goi == '' && input$colourby == "Gene expression")){
-      reduceDimentions(values$dataset,values$hvgs,input$goi,input$redTech,input$colourby,convertNames(input$ntype))
+      reduceDimentions(values$dataset,input$goi,input$redTech,input$colourby,convertNames(input$ntype))
     }
   })
   
@@ -214,7 +222,8 @@ shinyServer(function(input, output, session) {
     if (!is.null(values$selectedGroup)){
       numPlots <- length(unlist(strsplit(values$selectedGroup$all.mapped,",")))
       if (numPlots > 0){
-        values$toPlot <- getGenesToPlot(values$selectedGroup$all.mapped, values)
+        entrezCells <- values$dataset[!is.na(rowData(values$dataset)$entrez), ]
+        values$toPlot <- getGenesToPlot(values$selectedGroup$all.mapped, entrezCells)
         values$toHighlight <- getGeneToHighlight(input, values$toPlot)
         plotOutput("expr_boxplot", height=plotHeight(numPlots))
       }
@@ -245,38 +254,28 @@ shinyServer(function(input, output, session) {
     cs <- sort(cs)
     updateSelectInput(session, "compare_group1", choices = cs)
     updateSelectInput(session, "compare_group2", choices = cs, selected = cs[[2]])
-    reduceDimentions(values$dataset,values$hvgs,"","UMAP",input$compare_by)
+    reduceDimentions(values$dataset,"","UMAP",input$compare_by)
   })
   
-  #diff gene expr gene table 1 title
+  #diff gene expr gene table title
   output$comparison_table_title <- renderText({ 
     if (!is.null(values$markers)){
-      paste("Potential Markers for:", names(values$markers)[[1]])
+      "Potential Markers"
     }
   })
   
-  #diff gene expr gene table 1
+  #diff gene expr gene table 
   output$comparison_table <- renderDataTable({
     if (!is.null(values$markers)){
-      values$markers[[1]]
+      if (names(values$markers)[[1]] == input$compare_group1){
+        values$markers[[1]]
+      } else {
+        values$markers[[2]]
+      }
     }
   }, options=list(pageLength=10))
   
-  #diff gene expr gene table 2 title
-  output$comparison_table_title2 <- renderText({ 
-    if (!is.null(values$markers)){
-      paste("Potential Markers for:",names(values$markers)[[2]])
-    }
-  })
-  
-  #diff gene expr gene table 2
-  output$comparison_table2 <- renderDataTable({
-    if (!is.null(values$markers)){
-      values$markers[[2]]
-    }
-  }, options=list(pageLength=10))
-  
-  #on clicking visualise get all genes in pathway or custom signature
+  #on clicking visualize get all genes in pathway or custom signature
   observeEvent(input$gs_vis, {
     withProgress({
     genes <- vector()
@@ -292,11 +291,12 @@ shinyServer(function(input, output, session) {
       }
       pathway <- substr(input$gs_predefined_signatures, 4, 8)
       pv.out <- pathview(gene.data = gene.data, pathway.id = pathway, gene.idtype = "symbol", limit=ceiling(max(gene.data)), both.dirs = F, high = "purple", mid = "white",
-                         out.suffix = paste(input$gs_based_on,".","all", sep=""), node.sum = "max")
+                         out.suffix = paste(input$gs_based_on,".","all", sep=""), node.sum = "max", kegg.dir = "./pathway_data")
       
+      entrezCells <- values$dataset[!is.na(rowData(values$dataset)$entrez), ]
       for (g in 1:length(pv.out$plot.data.gene$all.mapped)){
         group <- pv.out$plot.data.gene[g,]
-        newGenes <- getGenesToPlot(group$all.mapped, values)
+        newGenes <- getGenesToPlot(group$all.mapped, entrezCells)
         genes <- union(genes,rownames(newGenes))
         incProgress()
       }
@@ -321,7 +321,7 @@ shinyServer(function(input, output, session) {
   #plot PCA/UMAP on gene signature page
   output$gs_plot <- renderPlot({
     if (!is.null(values$gs_toPlot)){
-      reduceDimentions(values$gs_toPlot,values$hvgs,"",input$gs_dimred,"average.gene.expression",convertNames(input$gs_norm))
+      reduceDimentions(values$gs_toPlot,"",input$gs_dimred,"average.gene.expression",convertNames(input$gs_norm))
     }
   })
 })
