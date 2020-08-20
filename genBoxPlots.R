@@ -1,4 +1,4 @@
-generateBoxPlots <- function(toPlot, norm_type="batch_corrected", highlight=NULL){
+generateBoxPlots <- function(toPlot, norm_type="batch_corrected", highlight=NULL, ncol = 2){
   col_pal <- c("#4daf4a", "#e41a1c", "#377eb8", "#108783", "#b8a904", "#b84304")
   if(!is.null(toPlot)){
     withProgress({
@@ -7,6 +7,7 @@ generateBoxPlots <- function(toPlot, norm_type="batch_corrected", highlight=NULL
       maxVal <- max(assay(toPlot, norm_type))
       minVal <- min(assay(toPlot, norm_type))
       
+      # Apply log scale to fpkm and tpm plots
       if (norm_type=="fpkm" || norm_type =="tpm"){
         trans <- "log2"
         scale_y <- list(scale_y_continuous(
@@ -21,6 +22,7 @@ generateBoxPlots <- function(toPlot, norm_type="batch_corrected", highlight=NULL
                                       limits = c(minVal, maxVal))
       }
       
+      # each each gene to plot
       for (g in seq_along(rownames(toPlot))){
         expr <- assay(toPlot, norm_type)[rownames(toPlot)[[g]],]
         tidyData <- tibble(cell_type = factor(toPlot$cell_type), 
@@ -39,21 +41,17 @@ generateBoxPlots <- function(toPlot, norm_type="batch_corrected", highlight=NULL
           theme <- theme(legend.position = "none")
         }
         
-        p[[g]] <- ggplot(data=tidyData, 
-                         mapping=aes(cell_type, norm_type, 
-                                     group=cell_type, fill=cell_type)) +
+        p[[g]] <- ggplot(data=tidyData, mapping=aes(cell_type, norm_type, group=cell_type, fill=cell_type)) +
           geom_boxplot(outlier.colour = "red", outlier.shape = 8) +
-          scale_fill_manual(breaks = c("Epiblast", "Primitive endoderm", "Trophectoderm", "Morula", "t2iL+Go H9", "E8 H9"), 
-                            values=col_pal) +
+          scale_fill_manual(breaks = c("Epiblast", "Primitive endoderm", "Trophectoderm", "Morula", "t2iL+Go H9", "E8 H9"), values=col_pal) +
           labs(x = "", y = norm_type, title = rownames(toPlot)[[g]]) + theme_bw() +
           theme +
           scale_y +
-          scale_x_discrete(labels=c("Epiblast" = "Epi", "Primitive endoderm" = "PE", "Trophectoderm" = "TE", "Morula" = "Morula"))
-        
+          scale_x_discrete(labels=c("Epiblast" = "Epi", "Primitive endoderm" = "PE", "Trophectoderm" = "TE"))
         
         incProgress()
       }
-      return(plot_grid(plotlist = p, ncol = 2))
+      return(plot_grid(plotlist = p, ncol = ncol))
     }, message = "Making boxplots...")
   }else{
     return(NULL)
