@@ -14,12 +14,11 @@ reduceDimentions<-function(cells, geneOfInterest, type="UMAP", colourby="cell_ty
     assay(cells, "log2counts") <- log2(assay(cells, norm_type) + 1)
     norm_type <- "log2counts"
   }
+  
+  # visualize
   if (type=="UMAP"){
-    # Visualization.
     plotUMAP(cells, colour_by=colourby, by_exprs_values=norm_type, point_alpha=1, point_size=3)
   } else {
-    
-    # Visualization.
     plotPCA(cells, colour_by=colourby, by_exprs_values=norm_type, point_alpha=1, point_size=3)
   }
 }
