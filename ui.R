@@ -52,7 +52,7 @@ shinyUI(fluidPage(
         span("This app is designed to aid in the analysis of single-cell RNA-seq data collected from the following studies; "),
         HTML(paste0(a(href = "https://www.nature.com/articles/nsmb.2660", "Yan et al."), ", ", 
                     a(href = "https://dev.biologists.org/content/142/18/3151", "Blakeley et al. "), ", ",
-                    a(href = "", "Pet et al."), " and ",
+                    a(href = "https://doi.org/10.1016/j.cell.2016.03.023", "Petropoulos et al."), " and ",
                     a(href = "https://www.sciencedirect.com/science/article/pii/S2211124718320746", "Messmer et al.")
         )),
         span("Select which datasets you would like to inspect and click load data to begin. "),
